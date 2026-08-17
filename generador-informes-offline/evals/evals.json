@@ -1,0 +1,33 @@
+{
+  "skill_name": "generador-informes-offline",
+  "evals": [
+    {
+      "id": 0,
+      "name": "informe-ventas-datos-pegados",
+      "prompt": "Necesito un informe de ventas del primer trimestre de 2025 en un solo archivo HTML que pueda abrir sin internet (0 conexión). Te pego los datos: Enero — Online 12.500 €, Tienda 8.300 €, Distribuidores 4.200 €. Febrero — Online 13.800 €, Tienda 7.900 €, Distribuidores 5.100 €. Marzo — Online 15.200 €, Tienda 8.600 €, Distribuidores 5.400 €. En marzo lanzamos una campaña que disparó el tráfico. La empresa se llama Soluciones Delta S.L., color azul marino, teléfono +34 912 345 678, correo info@solucionesdelta.es, web www.solucionesdelta.es, y el informe lo elabora Laura Gómez. Quiero que muestre la evolución mensual, el desglose por canal en una donut, un resumen ejecutivo con KPIs y que las gráficas sean estáticas.",
+      "expected_output": "Un archivo HTML monolítico autocontenido con: portada, resumen ejecutivo con KPIs, evolución mensual (gráfica de líneas/barras SVG), donut por canal, footer con logo+nombre+contacto+autor. Sin ninguna dependencia externa (validado).",
+      "files": []
+    },
+    {
+      "id": 1,
+      "name": "informe-gestion-archivo-xlsx",
+      "prompt": "Te paso un Excel con los indicadores del departamento de operaciones del segundo semestre de 2024 (archivo datos-operaciones.xlsx). Genérame un informe de gestión en un único archivo HTML que funcione 100% sin internet, con KPIs, gráficas y tablas. La empresa es Operaciones Norte S.A., colores corporativos verde y teal, teléfono +34 955 123 456, correo contacto@operacionesnorte.es, dirección Calle Inventada 12, Madrid. El autor del informe es Carlos Ruiz.",
+      "expected_output": "Lee el .xlsx, extrae los indicadores y genera un informe de gestión HTML monolítico offline con: KPIs del período, evolución mensual, comparativa contra metas, tablas, recomendaciones y footer con identidad completa (logo, empresa, contacto, autor).",
+      "files": ["datos-operaciones.xlsx"]
+    },
+    {
+      "id": 2,
+      "name": "informe-academico-preguntas",
+      "prompt": "Quiero un informe académico sobre los resultados de una encuesta de satisfacción estudiantil. La institución es Universidad del Saber, el autor es la Dra. Marta Ibáñez. No tengo logo de la universidad. Datos: muestra de 620 estudiantes; satisfacción global 78 %; 3 de cada 5 recomendarían la universidad; la dimensión peor valorada es la infraestructura (62 %) y la mejor el profesorado (85 %); comparación 2023 vs 2024: satisfacción subió del 71 % al 78 %. El informe debe tener resumen, metodología, resultados y conclusiones, con gráficas estáticas y que se vea sin internet.",
+      "expected_output": "Un informe académico HTML monolítico offline con estructura académica (resumen/abstract, metodología, resultados por dimensión, discusión, conclusiones, referencias), monograma SVG generado para la universidad, gráficas estáticas y footer con identidad completa.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "informe-animaciones-progreso",
+      "prompt": "Necesito un informe de progreso del departamento de tecnología del primer semestre de 2026, en un único archivo HTML que funcione sin internet. La empresa se llama Nexo Digital S.L. (color índigo), teléfono +34 913 000 111, correo hola@nexodigital.es, web www.nexodigital.es, y lo elabora David López. Quiero que sea VIVO pero sobrio: contadores animados en los KPIs, anillos de progreso por objetivo, barras que crecen al aparecer, la línea de evolución que se dibuja sola, y las tarjetas que aparecen suavemente al hacer scroll. Todo debe respetar prefers-reduced-motion y verse completo al imprimir. Datos: objetivos — Migración a la nube 86 % (meta 90 %), Cobertura de tests 78 % (meta 80 %), Reducción de incidencias 62 % (meta 70 %). Evolución de despliegues por mes: Ene 42, Feb 51, Mar 47, Abr 63, May 71, Jun 84. Incidencias por severidad: Críticas 4, Altas 12, Medias 38, Bajas 96. Velocidad media de resolución 3,2 días.",
+      "expected_output": "Un informe HTML monolítico offline que usa las animaciones data-* del skeleton (data-count, progress rings, data-grow, data-draw, data-reveal/data-stagger): contadores en KPIs, anillos de progreso por objetivo, barras y línea de evolución animadas, tarjetas con reveal. Debe respetar prefers-reduced-motion, forzar estado final en print, incluir 'Lectura:' bajo cada gráfica, footer con identidad completa y pasar el validador offline.",
+      "files": []
+    }
+  ]
+}

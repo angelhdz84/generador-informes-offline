@@ -1,0 +1,8 @@
+# Workspace de evaluaciones (resultados de benchmark, no parte de la skill)
+generador-informes-offline-workspace/
+
+# Node / temporales
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
