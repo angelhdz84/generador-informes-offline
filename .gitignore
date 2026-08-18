@@ -1,6 +1,10 @@
 # Workspace de evaluaciones (resultados de benchmark, no parte de la skill)
 generador-informes-offline-workspace/
 
+# Datos de clientes (no subir al repo público)
+logo/
+informe-*.html
+
 # Node / temporales
 node_modules/
 *.log

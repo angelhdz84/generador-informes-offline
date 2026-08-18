@@ -127,6 +127,10 @@ Estructura base OBLIGATORIA del documento:
    - Datos de contacto (teléfono, correo, web, dirección)
    - `Elaborado por: [autor]` (+ cargo si lo dio)
    - Período/año del informe
+   - **PROHIBIDO** añadir la firma `Documento 100% offline · generado con
+     generador-informes-offline` u otra autofirma de la skill en el footer.
+     El footer es solo identidad del cliente (logo, empresa, contacto, autor,
+     período).
 
 Reglas de contenido (obligatorias):
 
