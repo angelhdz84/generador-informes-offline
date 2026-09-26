@@ -9,28 +9,38 @@ en generación y el archivo resultante NO necesite ninguna librería.
 - `viewBox` común de trabajo: `0 0 600 H` (ancho 600; alto variable según el tipo).
 - `preserveAspectRatio="xMidYMid meet"` para que escale.
 - Cada gráfica se envuelve en un contenedor con clase `.chart` y lleva un `<title>` descriptivo.
+- El SVG informativo lleva `role="img"` y nombre accesible:
+  `role="img" aria-label="…"` o `aria-labelledby="id"` apuntando a su `<title>`
+  (único en la página). Si la gráfica es puramente decorativa,
+  `aria-hidden="true"`.
 - Colores desde la paleta (`assets/paletas.json`), campo `chart` (serie categórica) o `primary`/`secondary`.
 - Textos con `font-family: inherit` (heredan el system font stack).
 - Redondea valores a 1 decimal en etiquetas; formatea miles y % según locale es-ES.
+- El color nunca es la única señal: la serie va marcada con etiqueta, y los
+  deltas/estados llevan signo (`+9 %`, `−4 pts`) además del color.
 
-## Animación de gráficas (elegante y sobria)
+## Animación de gráficas (opt-in, elegante y sobria)
 
-Cada gráfica se anima con atributos `data-*` y las clases CSS/JS del skeleton
-(`assets/plantilla-base.html` + `assets/motion.min.js`). El contenido SIEMPRE
-debe verse completo sin JS y al imprimir; la animación es mejora progresiva.
+La animación se activa **por atributo**: una gráfica sin `data-*` es estática y
+correcta. Usa las clases CSS/JS del skeleton (`assets/plantilla-base.html` +
+`assets/motion.min.js`). El contenido SIEMPRE debe verse completo sin JS y al
+imprimir; la animación es mejora progresiva. Duraciones, easing y reduced motion
+en `references/movimiento.md`.
 
 | Atributo | Efecto | Uso típico |
 |---|---|---|
 | `data-reveal` | fade + subida suave | secciones, tarjetas, leyendas, análisis |
-| `data-stagger` (contenedor) | escalona a los hijos | grupo de barras o tarjetas |
-| `data-grow` | crece desde la base | barras verticales/horizontales (`<rect>`) |
-| `data-draw` | se dibuja trazo a trazo | líneas, áreas (borde), sparklines, gauge |
-| `data-pop` | escala suavemente | donut/pie, progress ring |
-| `data-count` | contador animado | valores KPI, stat blocks |
+| `data-slide` | fade + desliz direccional (`data-from`) | columnas comparativas, listas |
+| `data-stagger` (contenedor) | escalona a los hijos (80 ms máx.) | grupo de barras o tarjetas |
+| `data-grow` | crece desde la base (desde `scale(.2)`) | barras verticales/horizontales (`<rect>`) |
+| `data-draw` | se dibuja trazo a trazo (1.1 s) | líneas, áreas (borde), sparklines, gauge |
+| `data-pop` | escala suavemente (0.88 → 1) | donut/pie, progress ring |
+| `data-count` | contador animado (240 ms) | valores KPI, stat blocks |
 
 - Los elementos animados llevan `class="..." data-grow` etc. en el mismo elemento SVG.
 - El motor respeta `prefers-reduced-motion` y no anima en `@media print` (fuerza el estado final).
-- No sobreanimar: cada elemento se anima UNA vez al entrar en viewport, 0.5-1.1s.
+- No sobreanimar: cada elemento se anima UNA vez al entrar en viewport. Elige
+  una gráfica focal por sección; el resto puede quedar estática.
 
 Fórmulas útiles:
 
@@ -144,6 +154,8 @@ x(i) = (plotW - w(i)) / 2
 - Trapecios consecutivos (centrar cada uno) con color degradado del mismo tono.
 - Porcentaje de conversión entre etapas en la franja entre trapecios.
 - Etiqueta a la derecha: etapa + valor + % del total.
+- Alternativa rápida sin SVG: `.funnel` con `.f-step` (`--w` por paso) del skeleton;
+  el último paso con `.f-dim` para señalar abandono.
 
 ## 7. Gauge / medidor
 
@@ -156,6 +168,8 @@ Datos: valor actual, mínimo, máximo, zonas (buena/media/mala).
 - Arco base de 180° (grid) en gris claro, arco de progreso en `--primary` (o zona).
 - Aguja (línea desde centro) o marcador con radio al valor.
 - `<text>` central con el valor y la unidad.
+- Usa el contenedor `.gauge` del skeleton: el SVG dentro y el valor en
+  `.gauge-center` (fila `<strong>` valor + `<small>` unidad).
 
 ## 8. Heatmap
 
@@ -193,6 +207,9 @@ x(t) = left + (right-left) * acumulado / total
   La barra se dibuja en la base de la celda (CSS del skeleton). `--w` es el % (0-100),
   `--bc` el color (verde=bueno, ámbar=alerta, rojo=riesgo según el caso).
 - Contador animado y barras: resaltar que respetan `prefers-reduced-motion` y el modo print.
+- La barra in-cell no es la única señal: la celda lleva el valor en texto
+  además del color, y `--bc` acompaña a un texto/etiqueta cuando el tono
+  significa algo.
 
 ## 11. Timeline horizontal
 
@@ -205,6 +222,8 @@ x(t) = left + (right-left) * acumulado / total
 - Dos (o tres) columnas con encabezado (logo/nombre), 3-6 métricas alineadas como filas, cada fila con mini-barra o valor destacado.
 - Resaltar al ganador por fila con `--success` y check.
 - Mejor que una tabla genérica cuando se comparan pocas entidades en muchas dimensiones.
+- Contenedor del skeleton: `.compare` con `.compare-col` (grid de 2). Para
+  antes/después usa `[data-slide data-from="left|right"]` en cada columna.
 
 ## Análisis bajo cada gráfica (obligatorio)
 
@@ -223,16 +242,23 @@ análisis explica. Formato:
 - Di QUÉ pasa y POR QUÉ importa; nunca describas la mecánica ("las barras suben").
 - Si hay una anomalía (pico, caída, dato fuera de meta), menciónala y, si se sabe, su causa.
 - Cuando aplique, apunta al dato del apéndice que lo respalda.
+- "Lectura:" **no sustituye** el dato exacto: es interpretación. Si el lector
+  necesita el valor, la tabla o lista del apéndice lo da.
 
 ## Checklist por gráfica
 
-- [ ] `<title>` descriptivo accesible
+- [ ] `<title>` descriptivo y único en el documento
+- [ ] `role="img"` + `aria-label`/`aria-labelledby` (o `aria-hidden="true"` si es decorativa)
 - [ ] Leyenda clara (salvo sparkline)
-- [ ] Ejes etiquetados cuando aplique
+- [ ] Ejes etiquetados cuando aplique, con unidades
 - [ ] Etiquetas de valor visibles (serie corta) o min/max/último (serie larga)
 - [ ] Formato es-ES de números
-- [ ] Colores desde la paleta, no valores sueltos
-- [ ] Animación `data-*` aplicada según la tabla de convenciones
+- [ ] Colores desde la paleta, no valores sueltos; el color no es la única señal
+- [ ] Animación `data-*` solo si aporta lectura (opt-in), con los tokens de motion
 - [ ] Estado final correcto sin JS / con reduced-motion / en print
 - [ ] 1-2 frases de "Lectura:" bajo la gráfica
+- [ ] Dato exacto disponible en tabla o lista (apéndice) si la serie es compleja
 - [ ] Sin dependencia externa: todo inline en el archivo
+
+Ver `references/accesibilidad-ux.md` §5 para el criterio completo de nombre
+accesible, unidades y alternativa textual.

@@ -8,17 +8,21 @@ description: >-
   pie, donut, radar, funnel, gauge, heatmap, treemap, sparklines),
   infografías (timeline, procesos, comparativas, progress ring, panel "Lo más
   importante", índice navegable) e iconos SVG inline, con animaciones
-  elegantes y sobrias (reveal, barras, contadores) que respetan
-  prefers-reduced-motion, con footer obligatorio que siempre incluye logo +
-  nombre de empresa + datos de contacto + autor. Toda gráfica lleva una
-  interpretación de 1-2 frases bajo ella. Usa esta skill SIEMPRE que el
-  usuario pida crear, generar, armar, maquetar o redactar un informe,
-  reporte, report, memoria, resumen de resultados, dashboard estático o
-  documento con datos/gráficas en HTML — incluso si no dice explícitamente
-  "informe" o "reporte". Aplica también cuando el usuario pase datos o tablas
-  y quiera una presentación visual estructurada e imprimible (PDF) sin
-  conexión. No usar para dashboards web dinámicos que necesiten backend, ni
-  para documentos Word/PDF nativos.
+  elegantes y sobrias opt-in por atributo (reveal, entrada direccional, barras,
+  trazados, contadores) que respetan prefers-reduced-motion. Los informes salen
+  accesibles por defecto: skip link, un solo h1, main#contenido, navegación por
+  teclado con foco visible, SVG decorativos ocultos y gráficas con nombre
+  accesible, imágenes embebidas con alt y dimensiones, reflow a 320 px y zoom
+  200 %, completos y legibles sin JS, en reduced motion y al imprimir. Footer
+  obligatorio que siempre incluye logo + nombre de empresa + datos de contacto
+  + autor. Toda gráfica lleva una interpretación de 1-2 frases bajo ella. Usa
+  esta skill SIEMPRE que el usuario pida crear, generar, armar, maquetar o
+  redactar un informe, reporte, report, memoria, resumen de resultados,
+  dashboard estático o documento con datos/gráficas en HTML - incluso si no
+  dice explícitamente "informe" o "reporte". Aplica también cuando el usuario
+  pase datos o tablas y quiera una presentación visual estructurada e
+  imprimible (PDF) sin conexión. No usar para dashboards web dinámicos que
+  necesiten backend, ni para documentos Word/PDF nativos.
 compatibility:
   - Node.js (solo para el script de validación offline; el informe en sí es 100% sin dependencias)
 ---
@@ -51,10 +55,14 @@ PROHIBIDO en el HTML generado:
 OBLIGATORIO en el HTML generado:
 
 - `<meta charset="UTF-8">` y `<html lang="es">`
+- `<meta name="color-scheme" content="light">`, `color-scheme` en `:root` y
+  `<meta name="theme-color">` con el fondo real
 - System font stack: `font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;`
 - CSS completo en `<style>`, JS (si hay) en `<script>` inline
 - Iconos como sprite SVG embebido (`assets/iconos.svg`) o SVG inline dibujado a mano
-- Imágenes de marca embebidas en base64 (nunca por ruta)
+- Imágenes de marca embebidas en base64 (nunca por ruta), con `alt` y `width`/`height`
+- Skip link al contenido + `<main id="contenido" tabindex="-1">`
+- Bloque `prefers-reduced-motion` con estado final completo
 - `@media print` para que imprimir → Guardar como PDF produzca un documento limpio
 - Footer completo con identidad (ver abajo)
 
@@ -92,27 +100,43 @@ Regla: si los datos no alcanzan para una sección o métrica, NO inventes valore
 Presenta al usuario un listado corto: secciones propuestas + qué gráfica/
 infografía va en cada una. Elige el modo:
 
-- **Animaciones por defecto** (siempre activas): el skeleton (`assets/plantilla-base.html`)
-  + `assets/motion.min.js` animan reveal, barras, trazados, donut y contadores con
-  `data-*`. No requiere decisión del usuario: es mejora progresiva (sin JS todo se ve).
-- **SVG estático** (por defecto): informes simples, pocas series, prioridad a peso ligero e impresión perfecta.
-- **Interactivo** (Alpine.js inline desde `assets/alpine.min.js`, ~47KB): muchos datos, tabs por período/región, tooltips, filtros, toggle de modo oscuro. Al incrustarlo, el contenido del archivo debe copiarse DENTRO del `<script>` (nunca `<script src>`). Las animaciones `data-*` conviven con Alpine.
+- **Animación opt-in por atributo `data-*`** (modo por defecto): el skeleton
+  (`assets/plantilla-base.html`) trae el CSS preparado, pero un elemento **solo
+  anima si lleva** `data-reveal`, `data-slide`, `data-grow`, `data-draw`,
+  `data-pop`, `data-count` o `data-water`. El runtime (`assets/motion.min.js`)
+  solo se incluye si el informe usa al menos uno. Es mejora progresiva: sin JS,
+  con `prefers-reduced-motion` y en print, el estado final se ve completo.
+- **SVG estático** (sin `data-*` ni runtime): informes simples, pocas series,
+  prioridad a peso ligero e impresión perfecta. El contenido ya es legible y
+  completo sin una sola línea de JS.
+- **Interactivo** (Alpine.js inline desde `assets/alpine.min.js`, ~47KB): muchos
+  datos, tabs por período/región, tooltips, filtros, toggle de modo oscuro. Al
+  incrustarlo, el contenido del archivo debe copiarse DENTRO del `<script>` (nunca
+  `<script src>`). Las animaciones `data-*` conviven con Alpine.
 
-Si no hay duda razonable, decide tú y justifica en una línea. Si hay duda, pregunta.
+Regla de decisión: la animación se **añade** cuando aporta lectura (jerarquía,
+continuidad entre datos relacionados o un momento focal), no por defecto. Un
+informe de una sola gráfica se entrega estático. Si no hay duda razonable,
+decide tú y justifica en una línea; si hay duda, pregunta. Detalle en
+`references/movimiento.md`.
 
 ### Fase 4 — Generación del HTML
 
 **Usa `assets/plantilla-base.html` como punto de partida SIEMPRE.** Copia el
-archivo y rellena los placeholders (`{{TITULO}}`, `{{PALETA}}`, `{{SPRITE}}`,
-`{{MOTION_JS}}`, `{{TOPBAR}}`, `{{BODY}}`, `{{FOOTER}}`) con los datos reales.
-No reescribas el sistema de diseño del skeleton: añade contenido y, si hace
-falta un componente nuevo, consulta las referencias. Ayuda de cada referencia:
+archivo y rellena los placeholders (`{{TITULO}}`, `{{COLOR_FONDO}}`, `{{PALETA}}`,
+`{{SPRITE}}`, `{{MOTION_JS}}`, `{{TOPBAR}}`, `{{BODY}}`, `{{FOOTER}}`) con los
+datos reales. `{{COLOR_FONDO}}` va en `<meta name="theme-color">`: el color real
+de fondo de la paleta, nunca un placeholder (el validador lo rechaza en
+`--strict`). No reescribas el sistema de diseño del skeleton: añade contenido y,
+si hace falta un componente nuevo, consulta las referencias. Ayuda de cada
+referencia:
 
 - `references/svg-charts.md` → fórmulas y recetas de cada gráfica SVG + animación `data-*` + "Lectura:" obligatoria
-- `references/infografias.md` → timeline, funnel, KPI cards, comparativas, progress ring, panel, TOC, etc.
-- `references/diseno.md` → paletas, jerarquía, layout, print, accesibilidad, animaciones
+- `references/infografias.md` → timeline, funnel, KPI cards, comparativas, progress ring, panel, TOC, tooltips, etc.
+- `references/diseno.md` → paletas, jerarquía, layout, print y principios UX/UI (estilo premium con `.compare`, `.gauge`, `.funnel`, `.tip-zone`, `.status-dot`, `.hero-pattern`, modo oscuro opcional)
 - `references/tipos-informe.md` → estructura de secciones por tipo de informe
-- `references/movimiento.md` → sistema de animación y sus reglas
+- `references/movimiento.md` → sistema de animación, duraciones, easing y reduced motion
+- `references/accesibilidad-ux.md` → **baseline obligatorio**: semántica, teclado, foco, color, texto alternativo, responsive/zoom, checklist de entrega
 
 Estructura base OBLIGATORIA del documento:
 
@@ -136,31 +160,65 @@ Reglas de contenido (obligatorias):
 
 - **Toda gráfica lleva 1-2 frases de "Lectura:" bajo ella** con el hallazgo real
   (ver `references/svg-charts.md`). La gráfica muestra, el análisis explica.
-- Las gráficas e infografías llevan animación `data-*` del skeleton (mejora progresiva:
-  sin JS se ven completas; respetan `prefers-reduced-motion` y se fuerzan final en print).
+- Las gráficas e infografías llevan animación `data-*` del skeleton **solo cuando
+  aportan lectura**: mejora progresiva, respeta `prefers-reduced-motion` y fuerza el
+  estado final en print. Nada de reveals encadenados en cada bloque.
 - El logo/nombre también se reutilizan en la portada y el header para coherencia.
+
+Baseline de accesibilidad y lectura (OBLIGATORIO, ver
+`references/accesibilidad-ux.md`):
+
+- Skip link como primer elemento enfocable + `<main id="contenido" tabindex="-1">`.
+- Un solo `<h1>`, jerarquía de títulos sin saltos, `<nav>` con `aria-label`.
+- Iconos decorativos con `aria-hidden="true" focusable="false"`; SVG informativo
+  con `role="img"` y `aria-label`/`aria-labelledby` hacia un `<title>` único.
+- Toda `<img>` con `alt` coherente y `width`/`height` intrínsecos.
+- `<meta name="color-scheme">`, `color-scheme` en CSS y `<meta name="theme-color">`
+  coherentes con el fondo real.
+- `scroll-padding-top`/`scroll-margin-top` para que el TOC no tape el topbar.
+- `overflow-wrap:anywhere`, `text-wrap:balance` en títulos y `text-wrap:pretty`
+  en prosa; sin `overflow-x:hidden` como parche.
+- Todo operable con teclado, con `:focus-visible` visible y sin `tabindex` positivo.
+- El color nunca es la única señal: acompaña con texto, signo, icono o forma.
+- Completo y legible sin JS, con reduced motion, en print y a zoom 200 %.
 
 ### Fase 5 — Validación offline
 
-1. Guarda el HTML y valida: `node scripts/validar-offline.mjs informe.html`
+1. Guarda el HTML y valida: `node scripts/validar-offline.mjs informe.html --strict`
 2. El script comprueba 0-internet (errores que bloquean) y diseño (warnings).
-   Corrige TODOS los hallazgos; revalida hasta pasar limpio (sin errores).
-   Con `--strict` los warnings de diseño también bloquean (útil en revisión de calidad).
-3. Entrega: ruta del archivo + instrucción de abrirlo con doble clic y, si quiere PDF, Imprimir → Guardar como PDF (el CSS print ya está listo).
+   Con `--strict`, ambos bloquean: corrige TODOS los hallazgos y revalida hasta
+   salir limpio (código 0). Sin `--strict` los warnings solo se informan.
+3. Antes de entregar, completa el **checklist manual** de
+   `references/accesibilidad-ux.md` (recorrido con teclado, zoom 200 %, reduced
+   motion, estado sin JS e impresión a PDF): el validador cubre la capa
+   determinista, no sustituye esa revisión.
+4. Entrega: ruta del archivo + instrucción de abrirlo con doble clic y, si quiere PDF, Imprimir → Guardar como PDF (el CSS print ya está listo).
 
 ## Uso de assets
 
 - `assets/plantilla-base.html` — skeleton canónico (vía ÚNICA de diseño). Copiar y rellenar placeholders.
-- `assets/motion.min.js` — motor de animación (reveal, grow, draw, pop, count). Su contenido va inline en `<script>` dentro del skeleton.
+- `assets/motion.min.js` — motor de animación (reveal, slide, grow, draw, pop, count, water). Su contenido va inline en `<script>` dentro del skeleton.
 - `assets/iconos.svg` — sprite de iconos SVG (estilo feather). Incrusta en el HTML los `<symbol>` que uses dentro de un `<svg>` oculto y referéncialos con `<svg class="icon"><use href="#i-nombre"></use></svg>`. Si falta un icono, dibújalo a mano con el mismo estilo de trazo (stroke 2, redondeado).
 - `assets/paletas.json` — paletas profesionales: objeto con esquema de colores (fondo, superficie, texto, primario, secundario, éxito, alerta, peligro, serie de gráfica). Elige según tipo de informe y preferencia del usuario.
 - `assets/alpine.min.js` — solo para modo interactivo; su contenido va inline en `<script>`.
 
 ## Recomendaciones de calidad
 
-- Contraste AA/AAA en texto (ver `references/diseno.md`).
-- Cada gráfica con `<title>` descriptivo y leyenda; tablas con `<caption>`; toda gráfica con su "Lectura:".
-- Números con formato local (miles, %, fechas es-ES).
+- Contraste AA/AAA en texto (ver `references/diseno.md`); el validador comprueba
+  `--text`/`--muted` sobre `--surface` y `--text` sobre `--bg`.
+- Cada gráfica con nombre accesible, leyenda cuando hace falta y valores legibles;
+  tablas con `<caption>` y `<th scope>`; toda gráfica con su "Lectura:".
+- Números con formato local (miles, %, fechas es-ES) y `font-variant-numeric:tabular-nums`
+  en cifras comparables para que las columnas alineen.
 - No satures: una idea por gráfica; máximo 6 colores de serie en una misma gráfica.
-- Animaciones: sobrias, una vez por elemento, solo transform/opacity; respetar `prefers-reduced-motion`; estado final completo sin JS y en print (ver `references/movimiento.md`).
+- Animaciones: una vez por elemento, solo `transform`/`opacity`/`stroke-dashoffset`,
+  easing `cubic-bezier(0.23, 1, 0.32, 1)`, UI por debajo de 300 ms, sin `transition:all`
+  ni `scale(0)`; respetar `prefers-reduced-motion`; estado final completo sin JS y en
+  print (ver `references/movimiento.md` y `references/accesibilidad-ux.md`).
+- Micro-interacciones premium disponibles en el skeleton (úsalas con criterio, no
+  satures): `.tip-zone` con tooltip, columnas `.compare`, zoom de iconos al hover,
+  sello `.status-dot`, patrón `.hero-pattern` y modo oscuro `data-theme="dark"` (solo
+  modo interactivo, y con `color-scheme:dark` declarado).
+- Tooltips solo como extra: la información importante va en el flujo principal y
+  disponible con foco, nunca solo con hover.
 - El informe debe abrirse y verse perfecto SIN internet y SIN consola con errores.

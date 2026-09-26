@@ -1,6 +1,9 @@
 # Workspace de evaluaciones (resultados de benchmark, no parte de la skill)
 generador-informes-offline-workspace/
 
+# Capturas del panel de OpenChamber (verificaciones, no parte de la skill)
+.openchamber/
+
 # Datos de clientes (no subir al repo público)
 logo/
 informe-*.html

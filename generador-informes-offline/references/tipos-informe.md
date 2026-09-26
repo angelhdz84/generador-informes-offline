@@ -12,6 +12,11 @@ portada un **Índice (TOC) navegable** (`references/infografias.md`) y un panel
 **"Lo más importante"** (2-4 hallazgos). En informes cortos el resumen ejecutivo
 basta; no dupliques.
 
+Independientemente del tipo, todo informe cumple el baseline de
+`references/accesibilidad-ux.md`: skip link + `main#contenido`, un solo `<h1>`,
+SVG con nombre accesible o ocultos, imágenes con dimensiones, reflow a 320 px y
+zoom 200 %, y contenido completo sin JS, con reduced motion y en print.
+
 ---
 
 ## 1. Informe de ventas / comercial
@@ -118,8 +123,14 @@ Cuando el usuario no encaja en los tipos anteriores o pide algo específico:
 
 - El **resumen ejecutivo** siempre va después de la portada y antes de las secciones.
 - Informes con >6 secciones: TOC + panel "Lo más importante" tras la portada.
+- Cada sección responde a **una** pregunta principal; si necesita un dato de
+  otra sección, lo repite junto a su gráfica.
 - **Recomendaciones**: solo si hay datos para sustentarlas; 3-5 máx, concretas.
 - **Notas metodológicas**: siempre presentes (de dónde salen los datos y cómo se midieron).
 - **Apéndice**: tablas completas con los datos usados; es el "fuente de verdad" que respalda las gráficas.
 - Toda cifra en el informe debe poder rastrearse a un dato del apéndice o de la fuente.
 - El footer (identidad completa: logo, empresa, contacto, autor, período) es obligatorio en TODOS los tipos.
+- Las animaciones son opt-in por `data-*`; no añadas movimiento a una sección
+  solo porque el resto lo tiene (ver `references/movimiento.md`).
+- Antes de entregar, valida con `--strict` y completa el checklist manual de
+  `references/accesibilidad-ux.md`.

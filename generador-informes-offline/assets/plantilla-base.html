@@ -2,24 +2,30 @@
 <!-- ============================================================
   plantilla-base.html — Skeleton canónico del generador-informes-offline.
   CÓMO USARLO (lo hace la skill en Fase 4):
-  1. Copia este archivo como base del informe.
-  2. Reemplaza {{PALETA}} por las variables CSS de la paleta elegida
-     (assets/paletas.json) — conserva los nombres de variable.
-  3. Reemplaza {{SPRITE}} por el contenido de assets/iconos.svg.
-  4. Reemplaza {{MOTION_JS}} por el contenido de assets/motion.min.js.
-  5. Rellena {{TOPBAR}}, {{BODY}} y {{FOOTER}} con el contenido real.
-  NO reescribas este sistema de diseño: así TODOS los informes salen
-  con el mismo acabado. Para componentes consulta references/*.
+   1. Copia este archivo como base del informe.
+   2. Sustituye el token PALETA por las variables CSS de la paleta
+      elegida (assets/paletas.json) — conserva los nombres de variable.
+   3. Sustituye COLOR_FONDO por el color de fondo inicial de esa paleta.
+   4. Sustituye SPRITE por el contenido de assets/iconos.svg.
+   5. Sustituye MOTION_JS por el contenido de assets/motion.min.js.
+   6. Rellena TITULO, TOPBAR, BODY y FOOTER con el contenido real.
+   IMPORTANTE: cada token {{...}} existe SOLO una vez; no lo repitas.
+   NO reescribas este sistema de diseño: así TODOS los informes salen
+   con el mismo acabado. Para componentes consulta references/*.
 ============================================================ -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="generador-informes-offline">
+<meta name="color-scheme" id="color-scheme-meta" content="light">
+<meta name="theme-color" id="theme-color" content="{{COLOR_FONDO}}">
 <title>{{TITULO}}</title>
 <style>
-/* ===== Tokens de color (reemplazar {{PALETA}} con la paleta elegida) ===== */
+/* ===== Tokens base y overrides de paleta ===== */
 :root{
+  --topbar-h:72px;
+  color-scheme:light;
   --bg:#f6f8fb; --surface:#ffffff; --text:#1f2937; --muted:#6b7280; --border:#e5e7eb;
   --primary:#1e3a8a; --primary-soft:#2563eb; --secondary:#f59e0b;
   --success:#16a34a; --warning:#d97706; --danger:#dc2626;
@@ -28,16 +34,27 @@
   --radius:10px; --radius-lg:16px;
   --shadow:0 1px 3px rgba(15,23,42,.08),0 4px 12px rgba(15,23,42,.06);
   --shadow-lg:0 4px 16px rgba(15,23,42,.12),0 10px 32px rgba(15,23,42,.10);
+  --motion-ease:cubic-bezier(0.23,1,0.32,1);
+  --motion-duration:200ms;
+  --motion-delay:80ms;
 }
+{{PALETA}}
 /* ===== Base ===== */
 *{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.6;font-size:1rem;-webkit-font-smoothing:antialiased}
+html{scroll-padding-top:var(--topbar-h)}
+html.js:not(.no-anim){scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.6;font-size:1rem;-webkit-font-smoothing:antialiased;text-wrap:pretty;overflow-wrap:anywhere}
 .container{max-width:980px;margin:0 auto;padding:24px}
 .icon{width:1.15em;height:1.15em;vertical-align:-.2em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 a{color:var(--primary)}
-:focus-visible{outline:3px solid var(--primary);outline-offset:2px}
-h1,h2,h3,h4{line-height:1.2}
+:focus-visible{outline:3px solid var(--primary);outline-offset:3px}
+h1,h2,h3,h4{line-height:1.2;text-wrap:balance}
+main[id],section[id]{scroll-margin-top:8px}
+.topbar-inner,.hero-brand,.card,.kpi,.hl,.ring-item,.chart-box,.split>*,.compare>*,.mbar,.mbar-track,.foot-grid>*{min-width:0}
+img{max-width:100%;height:auto}
+.logo img{width:100%;height:100%;object-fit:contain}
+.skip-link{position:fixed;top:8px;left:8px;z-index:1000;padding:10px 14px;border-radius:var(--radius);background:var(--surface);color:var(--primary);box-shadow:var(--shadow-lg);font-weight:700;text-decoration:none;transform:translateY(calc(-100% - 16px));transition:transform var(--motion-duration) var(--motion-ease)}
+.skip-link:focus-visible{transform:translateY(0)}
 h2{font-size:1.5rem;font-weight:700;display:flex;align-items:center;gap:10px}
 h2 .icon{color:var(--primary)}
 .h2wrap{margin-bottom:22px}
@@ -51,6 +68,7 @@ section{margin-bottom:48px}
 .topbar{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
 .topbar-inner{max-width:980px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:12px}
 .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1.02rem;color:var(--primary)}
+.topbar a{min-height:44px;display:inline-flex;align-items:center}
 /* ===== Logo / monograma ===== */
 .logo{flex:0 0 auto;width:40px;height:40px;border-radius:10px;background:var(--radial);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:1rem;letter-spacing:.5px}
 /* ===== Portada (hero) ===== */
@@ -81,7 +99,7 @@ section{margin-bottom:48px}
 .hl p{font-size:.95rem} .hl p strong{color:var(--text)}
 /* ===== KPIs ===== */
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
-.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 20px 10px;display:flex;flex-direction:column;gap:6px;transition:transform .2s ease,box-shadow .2s ease}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 20px 10px;display:flex;flex-direction:column;gap:6px;transition:transform var(--motion-duration) var(--motion-ease),box-shadow var(--motion-duration) var(--motion-ease)}
 html.js:not(.no-anim) .kpi:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
 .kpi-head{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.85rem;font-weight:600}
 .kpi-head .icon{width:1em;height:1em;color:var(--primary)}
@@ -183,64 +201,155 @@ footer h4{color:#fff;font-size:.85rem;text-transform:uppercase;letter-spacing:.0
 footer .contact-item{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:.9rem}
 footer .contact-item .icon{color:#93c5fd}
 .foot-bottom{border-top:1px solid rgba(255,255,255,.15);padding:16px 0 20px;font-size:.82rem;color:#93a4c4;display:flex;flex-wrap:wrap;gap:8px 24px;justify-content:space-between}
+/* ===== Decoración y micro-interacciones ===== */
+/* Barras horizontales .mbar (comparativas, avance por ítem) */
+.mbar{display:flex;align-items:center;gap:10px;font-size:.88rem;margin:9px 0}
+.mbar .mbar-label{flex:0 0 200px;text-align:right;color:var(--text);white-space:normal}
+.mbar .mbar-track{flex:1;height:16px;border-radius:8px;background:var(--border);overflow:hidden}
+.mbar .fill{display:block;height:100%;width:var(--w,0%);border-radius:8px;background:var(--primary)}
+.mbar .mbar-val{flex:0 0 56px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+/* Sparkline genérica (también dentro de .kpi) */
+.spark{width:100%;height:34px;display:block;overflow:visible}
+.spark line,.spark path{stroke-linecap:round}
+.spark .sp-last{fill:var(--secondary);stroke:var(--surface);stroke-width:1.5}
+/* Sello de estado con punto pulsante */
+.status-dot{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:.85rem;padding:6px 14px;border-radius:999px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);color:#fff}
+.status-dot i{width:9px;height:9px;border-radius:50%;background:#34d399;box-shadow:0 0 0 0 rgba(52,211,153,.55)}
+.status-dot.on-light{background:#ecfdf5;border-color:#d1fae5;color:#047857}
+.status-dot.on-light i{background:#10b981}
+/* Patrón decorativo del hero (SVG inline, opcional) */
+.hero-pattern{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.hero-pattern ~ *{position:relative;z-index:1}
+/* Subrayado animado del índice */
+.toc a{position:relative}
+.toc a::after{content:"";position:absolute;left:8px;right:8px;bottom:1px;height:2px;border-radius:1px;background:var(--secondary);opacity:0;transform:scaleX(.01);transform-origin:left center;transition:opacity var(--motion-duration) var(--motion-ease),transform var(--motion-duration) var(--motion-ease)}
+html.js:not(.no-anim) .toc a:hover::after,html.js:not(.no-anim) .toc a:focus-visible::after{opacity:1;transform:scaleX(1)}
+/* Elevación sutil en hover (micro-interacción) */
+.hl,.recs li,.ring-item,.timeline .tl-item{transition:transform var(--motion-duration) var(--motion-ease),box-shadow var(--motion-duration) var(--motion-ease)}
+html.js:not(.no-anim) .hl:hover,html.js:not(.no-anim) .recs li:hover,html.js:not(.no-anim) .ring-item:hover,html.js:not(.no-anim) .timeline .tl-item:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+/* Modo oscuro (opcional · interactivo: <html data-theme="dark">) */
+[data-theme="dark"]{color-scheme:dark;--bg:#0f172a;--surface:#1e293b;--border:#334155;--text:#e2e8f0;--muted:#94a3b8;
+  --primary:#60a5fa;--primary-soft:#93c5fd;--secondary:#fbbf24;--success:#34d399;--warning:#fbbf24;--danger:#f87171;
+  --chart-1:#60a5fa;--chart-2:#93c5fd;--chart-3:#fbbf24;--chart-4:#34d399;--chart-5:#a78bfa;--chart-6:#f87171;--chart-7:#22d3ee;
+  --shadow:0 1px 3px rgba(0,0,0,.4),0 4px 12px rgba(0,0,0,.3);
+  --shadow-lg:0 4px 16px rgba(0,0,0,.5),0 10px 32px rgba(0,0,0,.4)}
+[data-theme="dark"] .topbar{background:rgba(15,23,42,.92)}
+[data-theme="dark"] footer{background:#020617}
+/* ===== Toques premium ===== */
+/* Tooltip simple (hover/focus; oculto en print) */
+.tip-zone{position:relative}
+.tip-zone .tip{display:none;position:absolute;left:50%;bottom:calc(100% + 10px);transform:translateX(-50%);z-index:20;min-width:max-content;max-width:250px;background:var(--text);color:var(--surface);font-size:.76rem;font-weight:600;line-height:1.45;text-align:left;padding:8px 12px;border-radius:8px;box-shadow:var(--shadow-lg);pointer-events:none}
+.tip-zone .tip::after{content:"";position:absolute;left:50%;top:100%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--text)}
+.tip-zone:hover .tip,.tip-zone:focus-visible .tip,.tip-zone:focus-within .tip{display:block}
+/* Con JS sin reduce: aparición con fade sin desliz invasivo */
+html.js:not(.no-anim) .tip-zone .tip{display:block;opacity:0;visibility:hidden;transition:opacity var(--motion-duration) var(--motion-ease),visibility var(--motion-duration) var(--motion-ease);transform:translateX(-50%) translateY(3px)}
+html.js:not(.no-anim) .tip-zone:hover .tip,html.js:not(.no-anim) .tip-zone:focus-visible .tip,html.js:not(.no-anim) .tip-zone:focus-within .tip{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+/* Columnas comparativas lado a lado (antes/después) */
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px}
+.compare .compare-col{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow)}
+.compare .compare-col h4{display:flex;align-items:center;gap:8px;font-size:1rem;margin-bottom:10px}
+.compare .compare-col ul{margin:0;padding-left:18px;font-size:.9rem;color:var(--muted)}
+.compare .compare-col ul li{margin-bottom:6px}
+/* Contenedor gauge (medidor) y funnel CSS */
+.gauge{position:relative;width:190px;margin:0 auto}
+.gauge .gauge-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.gauge .gauge-center strong{font-size:1.7rem;color:var(--text);font-variant-numeric:tabular-nums}
+.gauge .gauge-center small{font-size:.78rem;color:var(--muted)}
+.funnel{display:flex;flex-direction:column;gap:4px;max-width:440px;margin:0 auto}
+.funnel .f-step{width:var(--w,100%);background:var(--primary);color:#fff;text-align:center;padding:10px 12px;border-radius:6px;font-size:.86rem;font-weight:700}
+.funnel .f-dim{background:var(--muted)}
+/* Micro-interacciones: zoom de iconos y numerales */
+.hl-ic svg,.kpi-head svg,.hl svg.icon{transition:transform var(--motion-duration) var(--motion-ease)}
+html.js:not(.no-anim) .hl:hover .hl-ic svg{transform:scale(1.12)}
+html.js:not(.no-anim) .kpi:hover .kpi-head svg{transform:scale(1.15)}
+html.js:not(.no-anim) .recs li:hover .rnum{transform:scale(1.08);color:var(--secondary)}
+/* Accesibilidad: foco visible + scroll suave (el scroll suave vive en Base,
+   gated bajo html.js:not(.no-anim)) */
+.toc a:focus-visible,.hl:focus-visible,.kpi:focus-visible,.recs li:focus-visible,.ring-item:focus-visible{outline:3px solid var(--primary);outline-offset:3px;border-radius:6px}
 /* ===== Animaciones (elegantes y sobrias) ===== */
-html.js:not(.no-anim) [data-reveal]{opacity:0;transform:translateY(16px);transition:opacity .55s ease,transform .55s cubic-bezier(.22,.61,.36,1);transition-delay:var(--d,0s)}
+html.js:not(.no-anim) [data-reveal]{opacity:0;transform:translateY(16px);transition:opacity var(--motion-duration) var(--motion-ease),transform var(--motion-duration) var(--motion-ease);transition-delay:min(var(--d,0ms),var(--motion-delay))}
 html.js:not(.no-anim) [data-reveal].in{opacity:1;transform:none}
-html.js:not(.no-anim) [data-grow]{transform:scaleY(0);transform-box:fill-box;transform-origin:center bottom;transition:transform .7s cubic-bezier(.22,.61,.36,1);transition-delay:var(--d,0s)}
+html.js:not(.no-anim) [data-slide]{opacity:0;transform:translate(var(--sw,0px),var(--sh,22px));transition:opacity var(--motion-duration) var(--motion-ease),transform var(--motion-duration) var(--motion-ease);transition-delay:min(var(--d,0ms),var(--motion-delay))}
+html.js:not(.no-anim) [data-slide].in{opacity:1;transform:none}
+html.js:not(.no-anim) [data-from="left"]{--sw:26px}
+html.js:not(.no-anim) [data-from="right"]{--sw:-26px}
+html.js:not(.no-anim) [data-from="up"]{--sh:26px}
+html.js:not(.no-anim) [data-from="down"]{--sh:-26px}
+html.js:not(.no-anim) [data-grow]{transform:scaleY(.2);transform-box:fill-box;transform-origin:center bottom;transition:transform var(--motion-duration) var(--motion-ease);transition-delay:min(var(--d,0ms),var(--motion-delay))}
 html.js:not(.no-anim) [data-grow].in{transform:scaleY(1)}
-html.js:not(.no-anim) [data-draw]{stroke-dasharray:var(--len,1400);stroke-dashoffset:var(--len,1400);transition:stroke-dashoffset 1.1s ease .05s}
+html.js:not(.no-anim) .mbar .fill[data-grow]{transform:scaleX(.2);transform-box:fill-box;transform-origin:left center;transition:transform var(--motion-duration) var(--motion-ease);transition-delay:min(var(--d,0ms),var(--motion-delay))}
+html.js:not(.no-anim) .mbar .fill[data-grow].in{transform:scaleX(1)}
+html.js:not(.no-anim) [data-draw]{stroke-dasharray:var(--len,1400);stroke-dashoffset:var(--len,1400);transition:stroke-dashoffset 1.1s var(--motion-ease) 50ms}
 html.js:not(.no-anim) [data-draw].in{stroke-dashoffset:0}
-html.js:not(.no-anim) [data-pop]{transform:scale(.88);transform-box:fill-box;transform-origin:center;transition:transform .65s cubic-bezier(.22,.61,.36,1);transition-delay:var(--d,0s)}
+html.js:not(.no-anim) [data-pop]{transform:scale(.88);transform-box:fill-box;transform-origin:center;transition:transform var(--motion-duration) var(--motion-ease);transition-delay:min(var(--d,0ms),var(--motion-delay))}
 html.js:not(.no-anim) [data-pop].in{transform:scale(1)}
+html.js:not(.no-anim) [data-water]{opacity:0;transition:opacity var(--motion-duration) var(--motion-ease) var(--motion-delay)}
+html.js:not(.no-anim) [data-water].in{opacity:var(--wo,.45)}
+html.js:not(.no-anim) .status-dot i{animation:dotPulse var(--motion-duration) var(--motion-ease) 1 both}
+@keyframes dotPulse{0%{box-shadow:0 0 0 0 rgba(16,185,129,.55)}70%{box-shadow:0 0 0 9px rgba(16,185,129,0)}100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}}
 @media (prefers-reduced-motion: reduce){
-  html.js [data-reveal],html.js [data-grow],html.js [data-pop]{opacity:1!important;transform:none!important}
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+  html.js [data-reveal],html.js [data-slide],html.js [data-grow],html.js [data-pop]{opacity:1!important;transform:none!important}
+  html.js .mbar .fill[data-grow]{transform:scaleX(1)!important}
   html.js [data-draw]{stroke-dashoffset:0!important}
+  html.js [data-water],html.js [data-water].in{opacity:var(--wo,.45)}
+  .skip-link{transition:none}
 }
 /* ===== Print ===== */
 @media print{
   @page{size:A4;margin:14mm}
-  html.js [data-reveal],html.js [data-grow],html.js [data-pop]{opacity:1!important;transform:none!important}
+  html.js [data-reveal],html.js [data-slide],html.js [data-grow],html.js [data-pop]{opacity:1!important;transform:none!important}
+  html.js .mbar .fill[data-grow]{transform:scaleX(1)!important}
   html.js [data-draw]{stroke-dashoffset:0!important}
+  html.js [data-water],html.js [data-water].in{opacity:var(--wo,.45)!important}
   .topbar{display:none}
+  .skip-link{display:none!important}
   .hero{border-radius:0;box-shadow:none}
   .card,.kpi,.hl,.toc,.recs li,.ring-item{box-shadow:none;border:1px solid #e5e7eb}
   section{break-inside:avoid}
   .kpi,.chart-box,.hl{break-inside:avoid}
   h2{break-after:avoid}
   a{color:inherit;text-decoration:none}
+  .tip-zone .tip{display:none!important}
 }
 /* ===== Responsive ===== */
 @media (max-width:760px){
   .split{grid-template-columns:1fr}
+  .compare{grid-template-columns:1fr}
   .hero{padding:36px 24px}
+  .topbar-inner{padding:8px 16px}
+  .toc a{min-height:44px}
+  .mbar{flex-wrap:wrap}
+  .mbar .mbar-label{flex:0 0 100%;text-align:left}
+  .mbar .mbar-track{flex:1 1 140px}
   .foot-grid{grid-template-columns:1fr;gap:20px}
 }
 </style>
 </head>
 <body>
-<!-- Sprite de iconos: sustituir {{SPRITE}} por el contenido de assets/iconos.svg -->
+<a class="skip-link" href="#contenido">Saltar al contenido principal</a>
+
+<!-- Sprite de iconos (pega aquí el contenido de assets/iconos.svg) -->
 {{SPRITE}}
 
-<!-- ===== Topbar: sustituir {{TOPBAR}} ===== -->
+<!-- ===== Topbar (pega aquí el bloque del topbar) ===== -->
 {{TOPBAR}}
 
-<main class="container">
-  <!-- ===== Contenido: sustituir {{BODY}} =====
-       Estructura recomendada (ver references/tipos-informe.md):
-       1. <section class="hero"> portada </section>
-       2. <nav class="toc"> índice (informes largos) </nav>
-       3. <section class="highlights"> Lo más importante </section>
-       4. <section> Resumen ejecutivo (KPI cards) </section>
-       5. <section>…</section> por cada bloque temático
-       6. Recomendaciones · Notas metodológicas · Apéndice -->
+<main id="contenido" class="container" tabindex="-1">
+  <!-- ===== Contenido (pega aquí el cuerpo del informe) =====
+     Estructura recomendada (ver references/tipos-informe.md):
+       1) portada hero · 2) índice nav.toc (solo informes largos)
+       3) panel "Lo más importante" .highlights · 4) resumen ejecutivo (KPIs)
+       5) una sección por bloque temático · 6) recomendaciones · notas
+       metodológicas · apéndice -->
   {{BODY}}
 </main>
 
-<!-- ===== Footer: sustituir {{FOOTER}} =====
+<!-- ===== Footer (pega aquí el footer del cliente) =====
      SIEMPRE con logo + nombre de empresa + contacto + autor + período -->
 {{FOOTER}}
 
-<!-- Motor de animación: sustituir {{MOTION_JS}} por assets/motion.min.js -->
+<!-- Motor de animación (pega aquí el contenido de assets/motion.min.js) -->
 <script>
 {{MOTION_JS}}
 </script>

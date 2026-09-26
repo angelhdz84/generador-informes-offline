@@ -14,6 +14,7 @@ Placeholders a sustituir:
 | Placeholder | Qué va |
 |---|---|
 | `{{TITULO}}` | Título del documento (`<title>` y hero) |
+| `{{COLOR_FONDO}}` | Fondo real de la paleta, para `<meta name="theme-color">`. Debe salir de la paleta elegida, no inventarse ni quedar como placeholder |
 | `{{PALETA}}` | Variables CSS de la paleta elegida (`assets/paletas.json`) |
 | `{{SPRITE}}` | Contenido de `assets/iconos.svg` |
 | `{{MOTION_JS}}` | Contenido de `assets/motion.min.js` |
@@ -52,8 +53,14 @@ Cómo elegir:
 
 - **Radio**: `4px` (elementos pequeños), `10px` (tarjetas), `16px` (portada/hero).
 - **Sombra**: sutil `0 1px 3px rgba(15,23,42,.08), 0 4px 12px rgba(15,23,42,.06)`.
-- **Espaciado** (escala 4): `4, 8, 12, 16, 24, 32, 48, 64`.
+- **Espaciado** (escala 8pt): `8, 16, 24, 32, 48, 64`. Los múltiplos de 4
+  (`4, 12, 20`) se usan solo dentro de componentes cerrados (padding de celda,
+  hueco entre icono y texto), nunca entre bloques.
 - **Ritmo de página**: secciones separadas 48px; contenido dentro de tarjetas 24px.
+- **Alto del topbar**: `--topbar-h` (72px por defecto). Compensa el scroll
+  sticky: `html{scroll-padding-top:var(--topbar-h)}` y
+  `main[id],section[id]{scroll-margin-top:8px}`. Los dos se **suman**, así que si
+  cambias el alto del topbar cambia solo el token, nunca los dos números.
 
 ## Tipografía
 
@@ -80,6 +87,10 @@ Cómo elegir:
 - **Secciones**: `<section>` con `<h2>` + línea de acento; contenido en tarjetas
   (`.card`) de `surface` con sombra. Gráfica + comentario de análisis al lado.
 - **Apéndice**: tablas `.table` con `<caption>`, filas zebra suaves, `th` sticky opcional.
+  **Toda `<table>` va dentro de un `.table-wrap`** (`overflow-x:auto`), obligatorio
+  en C11: sin él, una tabla ancha desborda el viewport y rompe el reflow a 320 px
+  y la impresión. Un solo `.table-wrap` puede envolver varias tablas seguidas;
+  no hace falta uno por tabla.
 - **Footer**: bandas oscuras o claras según paleta; 2-4 columnas en desktop,
   apilado en móvil; SIEMPRE con logo, nombre, contacto, autor y período.
 
@@ -110,17 +121,90 @@ informe. Reglas clave:
 - Las animaciones se fuerzan a su estado final en print (el skeleton ya lo hace).
 - Oculta elementos puramente interactivos con `.no-print`.
 
-## Animaciones (por defecto, elegantes y sobrias)
+## Animaciones (opt-in por atributo, elegantes y sobrias)
 
-El skeleton + `assets/motion.min.js` animan por defecto, sin configuración:
+El skeleton trae el CSS de animación preparado, pero **nada anima por defecto**:
+un elemento solo se mueve si lleva un atributo `data-*`. Si el informe no usa
+ninguno, no se incrusta `assets/motion.min.js`.
 
-- `data-reveal` (fade+subida), `data-grow` (barras), `data-draw` (trazos),
-  `data-pop` (donut/ring), `data-count` (contadores), `data-stagger` (escalonado).
+- `data-reveal` (fade+subida), `data-slide` (desliz direccional, `data-from`),
+  `data-grow` (barras), `data-draw` (trazos), `data-pop` (donut/ring),
+  `data-count` (contadores), `data-stagger` (escalonado), `data-water` (fondo decorativo).
 - **Reglas obligatorias**: (1) el contenido se ve completo sin JS y al imprimir;
-  (2) `prefers-reduced-motion: reduce` desactiva todo (el script añade `html.no-anim`);
-  (3) solo `transform`/`opacity`/`stroke-dashoffset` (compositor rápido); (4) una
-  animación por elemento al entrar en viewport; (5) duraciones 0.5-1.1s, sin loops.
-- Referencia de uso: tabla de animación en `references/svg-charts.md`.
+  (2) `prefers-reduced-motion: reduce` desactiva todo (el script añade `html.no-anim`
+  y el CSS fuerza el estado final); (3) solo `transform`/`opacity`/`stroke-dashoffset`
+  (compositor rápido); (4) una animación por elemento al entrar en viewport;
+  (5) duraciones acotadas y sin loops (ver `references/movimiento.md`).
+- **Criterio para animar**: la animación aporta lectura — jerarquía, continuidad
+  entre datos relacionados o un momento focal. No se añade "porque se ve más vivo".
+  Un informe corto o de una sola gráfica se entrega estático.
+- Referencia de uso: tabla de animación en `references/svg-charts.md`; duraciones,
+  easing y reduced motion en `references/movimiento.md`.
+
+## Decoración y micro-interacciones (incluidas en la plantilla)
+
+Recursos que ya trae el skeleton para que los informes destaquen sin coste:
+
+- **Patrón decorativo del hero** (`svg.hero-pattern[data-water]`): SVG inline
+  punteado/trama de fondo con fundido suave (opacidad → `var(--wo,.45)`). Se
+  coloca como primer hijo del hero; el resto de contenido hereda `z-index:1`.
+- **Sello de estado** (`.status-dot`): píldora con punto que pulsa 2 veces;
+  ideal "Web operativa" / "Servicio activo".
+- **Mini-barras comparativas** (`.mbar`): rellenos `scaleX` con `--w` y color
+  semántico `--bc`; cuentan en la jerarquía "tamaño → color → contraste".
+- **Subrayado animado del índice**: cada enlace del TOC gana una línea que se
+  dibuja al hover (solo `transform`, guardado bajo `prefers-reduced-motion`).
+- **Elevación en hover**: tarjetas `.hl`, `.recs li`, `.ring-item`, ítems de
+  timeline suben 3px con sombra ampliada (transición de `var(--motion-duration)`).
+- **Modo oscuro opcional** (interactivo): poniendo `data-theme="dark"` en
+  `<html>` cambian `--bg/--surface/--border/--text/--muted` + colores de gráficas
+  (mapa completo de tokens). Por defecto los informes van en claro; el modo
+  oscuro es una elección del informe (con Alpine u otro control), no un default.
+- **Tooltip** (`.tip-zone > .tip`): ayuda contextual al hover/foco del ítem;
+  oculto en print. NO es una animación: es contenido y también se muestra bajo
+  `prefers-reduced-motion` (el fade solo aparece con JS y sin reduce). Usar SOLO
+  como extra, nunca como sustituto de la línea "Lectura:" obligatoria.
+- **Columnas comparativas** (`.compare > .compare-col`): grid de 2 (antes/después,
+  A vs B) con tarjeta por columna; combina con `[data-slide data-from="left|right"]`
+  para que cada columna entre desde su lado. En móvil pasa a 1 columna.
+- **Gauge y funnel**: el skeleton trae contenedores `.gauge` (medidor con centro
+  tipo `.gauge-center` para el valor) y `.funnel` (escaleras con `.f-step` y
+  `--w` por paso). Siguen la misma regla: `<title>` + "Lectura:" bajo la pieza.
+- **Zoom de iconos**: al hover, iconos de `.hl-ic`, `.kpi-head` y numerales de
+  `.recs .rnum` crecen ligeramente (solo `transform`, micro-interacción sobria).
+- **Foco visible + scroll suave**: `:focus-visible` con outline accesible en
+  enlaces, tarjetas e ítems interactivos; scroll suave solo con JS activo
+  (desactivado por `prefers-reduced-motion`).
+
+## Principios UX/UI de referencia (curados)
+
+La plantilla ya aplica estas reglas; úsalas como checklist de "acabado premium"
+al revisar un informe generado. La versión normativa de estos principios está
+en `references/accesibilidad-ux.md`: aquí quedan como criterio de diseño, no
+como especificación.
+
+- **Menos es más**: cada dato extra compite con los que importan. Si un número o
+  gráfica no apoya la conclusión, se elimina (heurística #8 de Nielsen).
+- **El lector no memoriza**: cada gráfica se entiende en sí misma — título claro,
+  etiquetas visibles, "Lectura:" debajo. No obligues a recordar otra sección
+  (heurística #6: reconocimiento ante recuerdo).
+- **Consistencia, no uniformidad**: mismos patrones visuales para cosas iguales
+  (mismo color = misma serie), mismos términos. Ayuda a que el informe "se sienta
+  de marca" (GOV.UK principio 9).
+- **Claro estándar, no distracción**: jerarquía por tamaño→color→contraste;
+  máx. 6 colores por serie; animación sobria, acotada y sin bucles (GOV.UK "do
+  the hard work to make it simple").
+- **Menos movimiento, más lectura**: en modo lectura prefiere una secuencia
+  memorable a reveals encadenados. La animación no oculta ni retrasa información
+  que ya está disponible.
+- **Accesible es premium**: contraste AA, patrón+símbolo además de color, foco
+  visible, títulos de gráfica para lector de pantalla, estados finales sin JS y
+  en print (GOV.UK: "This is for everyone").
+- **Palanca de contexto**: kpi/tarjetas que elevan al hover, timeline que se
+  dibuja, contadores que suben → el lector siente que el informe "responde"
+  (heurística #1: visibilidad del estado del sistema).
+- **Datos reales o nada**: nunca inventar series; si falta el dato, omitir la
+  pieza y explicarlo (GOV.UK: "Design with data").
 
 ## Interactividad (solo modo interactivo)
 
@@ -130,15 +214,33 @@ El skeleton + `assets/motion.min.js` animan por defecto, sin configuración:
 - Si el tamaño justifica no cargar Alpine (informes simples), usa JS vanilla
   mínimo inline (menos de 40 líneas) para tabs/tooltips.
 - La interactividad convive con las animaciones `data-*` (no las sustituye).
+- El contenido esencial funciona sin JS. Los tabs y filtros usan un patrón
+  completo de teclado/ARIA (`tablist`, `tabindex` rotativo, `aria-selected`,
+  paneles etiquetados y foco gestionado), no solo un click.
+- El toggle de modo oscuro declara `color-scheme:dark` en su bloque CSS.
 
 ## Accesibilidad
 
+La norma completa vive en `references/accesibilidad-ux.md` (baseline
+obligatorio + checklist de entrega). Resumen de los puntos de diseño que
+corresponden a este documento:
+
 - Contraste: texto ≥ 4.5:1 (AA); grande ≥ 3:1. Verifica primary sobre surface.
-- Texto por color: acompaña todo color con símbolo, texto o patrón.
-- Tablas con `<caption>`; gráficas con `<title>` + leyenda; alternativas textuales.
-- Foco visible: `:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }`.
-- Target táctil ≥ 44px si es interactivo.
+  El validador mide `--text`/`--muted` sobre `--surface` y `--text` sobre `--bg`.
+- Texto por color: acompaña todo color con símbolo, texto o patrón. **El color
+  nunca es la única señal.**
+- Tablas con `<caption>`, `<thead>` y `<th scope>`; gráficas con nombre accesible
+  (`role="img"` + `aria-label`/`<title>`) y leyenda cuando hace falta; SVG
+  decorativos con `aria-hidden="true" focusable="false"`.
+- Foco visible: `:focus-visible` con outline de 3px y `outline-offset` (ya
+  incluido en la plantilla). Nunca `outline:none` sin sustituto.
+- Skip link + `<main id="contenido" tabindex="-1">`; `nav` con `aria-label`.
+- Target táctil ≥ 24px general, 44px recomendado en móvil para controles primarios.
 - Navegación por teclado funcional en modo interactivo (tabs con `role="tablist"`).
+- Reflow: `text-wrap:balance` en títulos, `text-wrap:pretty` en prosa,
+  `overflow-wrap:anywhere` para tokens largos. Sin `overflow-x:hidden` como parche.
+- `color-scheme` y `theme-color` coherentes con el tema; con
+  `data-theme="dark"`, `color-scheme:dark` en el bloque CSS.
 
 ## Identidad (obligatorio en todo informe)
 

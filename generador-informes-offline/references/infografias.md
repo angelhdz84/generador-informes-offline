@@ -3,27 +3,33 @@
 Bloques autocontenidos en HTML+CSS+SVG inline que comunican de un vistazo.
 Se combinan con las gráficas de `svg-charts.md` dentro de las secciones.
 
+Los requisitos de nombre accesible, SVG decorativo, teclado y reflow de estos
+bloques están en `references/accesibilidad-ux.md`. Los `data-*` son opt-in: una
+infografía sin ellos es estática y correcta.
+
 ## KPI card (tarjeta de indicador)
 
 ```html
 <div class="kpi">
   <div class="kpi-head">
-    <span class="kpi-icon"><svg class="icon"><use href="#i-trending-up"></use></svg></span>
+    <span class="kpi-icon"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-trending-up"></use></svg></span>
     <span class="kpi-label">Ingresos Q1</span>
   </div>
   <div class="kpi-value"><span data-count data-to="1240000" data-suffix=" €">1.240.000 €</span></div>
   <div class="kpi-delta up">▲ 12,4 % vs Q4</div>
-  <svg class="spark" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true"><path data-draw d="…"/></svg>
+  <svg class="spark" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path data-draw d="…"/></svg>
 </div>
 ```
 
 Reglas:
 - Valor = dato principal, destacado tipográficamente (2-3× el tamaño de la etiqueta).
-- Contador `data-count` por defecto (el valor final va ya en el DOM como fallback).
-- Delta con color: `--success` si sube, `--danger` si baja, texto plano si es neutral.
-- Sparkline debajo (receta en `svg-charts.md` §3) con `data-draw`.
+- Contador `data-count` opt-in (el valor final va ya en el DOM como fallback).
+- Delta con color **y** con signo/etiqueta: `--success` si sube, `--danger` si
+  baja, texto plano si es neutral. El color nunca es la única señal.
+- Sparkline debajo (receta en `svg-charts.md` §3) con `data-draw`, decorativa.
 - Máximo 6 KPI en el resumen ejecutivo, en grid responsivo (1 col móvil / 2-3 col desktop).
-- Las tarjetas llevan `data-reveal` y su grid `data-stagger`.
+- Las tarjetas llevan `data-reveal` y su grid `data-stagger` si animas el bloque;
+  el efecto de hover de `.kpi` es interacción, no animación de entrada.
 
 ## Stat block (bloque de dato destacado)
 
@@ -95,6 +101,12 @@ En informes largos (>6 secciones) va tras la portada:
 
 - Cada `<section>` de contenido lleva `id`; enlaces con `href="#id"` (anclas locales, siguen siendo 0-internet).
 - Los números de la lista son automáticos (CSS counters). En print los enlaces se imprimen planos (mismo documento).
+- Con topbar sticky, las secciones necesitan `scroll-margin-top` (o
+  `scroll-padding-top` en `:root`) para que el ancla no quede tapada.
+- Cada sección enlazada necesita un `id` **único** en el documento.
+- Antes del `<nav>`, el `<body>` abre con el skip link
+  `<a class="skip-link" href="#contenido">…</a>` y el contenido vive en
+  `<main id="contenido" tabindex="-1">`.
 
 ## Donut con total central
 
@@ -129,17 +141,90 @@ Cronología de hitos/eventos (lanzamientos, logros, entregables). Ver §11 de
 Ver §12 de `svg-charts.md`. Usar cuando se comparan 2-3 entidades/escenarios en
 varias dimensiones (antes/después, producto A vs B, trimestres).
 
+Contenedor premium del skeleton: `.compare` con `.compare-col` (grid de 2). Para
+antes/después animado, cada columna lleva `data-slide` con `data-from="left|right"`:
+
+```html
+<div class="compare">
+  <article class="compare-col" data-slide data-from="left">
+    <h4>… │ Antes</h4>
+    <ul><li>Métrica 1 · valor</li><li>Métrica 2 · valor</li></ul>
+  </article>
+  <article class="compare-col" data-slide data-from="right">
+    <h4>… │ Después</h4>
+    <ul><li>Métrica 1 · valor</li><li>Métrica 2 · valor</li></ul>
+  </article>
+</div>
+```
+
+Cada métrica puede llevar mini-barra o `data-count` si es protagonista.
+
 ## Progress bars
 
 Barras de avance con etiqueta y % (ej. cumplimiento por área). Variantes:
 sólida, segmentada, con hito. El relleno lleva `data-grow` (crece desde la base)
 y el % suele ser un `data-count` si es un número protagonista.
 
+## Mini-barras comparativas (`.mbar`)
+
+Comparar la "efectividad" o el % de varios ítems con rellenos que crecen desde
+la izquierda (ver `movimiento.md` → "Barras horizontales"). Muy útil para
+opciones/vías probadas, cumplimiento por área o evolución entre periodos:
+
+```html
+<div class="chart"><svg…>…</svg>
+<p class="chart-caption"><strong>Lectura:</strong> …</p></div>
+<div class="mbars" data-stagger>
+  <div class="mbar"><span class="mbar-label">Plugins</span>
+    <span class="mbar-track"><span class="fill" data-grow style="--w:0%;--bc:var(--danger)"></span></span>
+    <span class="mbar-val">0 %</span></div>
+  <div class="mbar"><span class="mbar-label">Backup</span>
+    <span class="mbar-track"><span class="fill" data-grow style="--w:100%;--bc:var(--success);--d:200ms"></span></span>
+    <span class="mbar-val">100 %</span></div>
+</div>
+```
+
+- Color semántico por ítem con `--bc` (default `var(--primary)`).
+- La gráfica de este tipo SIEMPRE lleva `<title>` + "Lectura:" (requisito `--strict`).
+- Nunca inventar valores: si no hay dato real, no se pone la barra.
+
+## Sello de estado (`.status-dot`)
+
+Píldora con punto que pulsa al cargar ("Web operativa", "Servicio activo").
+Úsala con criterio: mejor en el hero o en paneles de estado, no por cada sección.
+Ver `movimiento.md` → "Sello de estado pulsante".
+
+## Tooltip contextual (`.tip-zone`)
+
+Ayuda breve al hover/foco de un ítem. SOLO complemento: la gráfica sigue
+necesitando su línea "Lectura:" obligatoria.
+
+```html
+<span class="tip-zone" tabindex="0">
+  Cifra con detalle
+  <span class="tip" role="note">Desglose y fuente del dato…</span>
+</span>
+```
+
+Se oculta en print. NO es una animación: es contenido informativo y funciona
+también bajo `prefers-reduced-motion` (hover y foco la muestran al instante;
+con JS y sin reduce se muestra con un suave fade).
+
+- El datoTooltip **nunca** es la única vía de acceso: la información importante
+  se escribe en el flujo principal, y el tooltip solo la amplía.
+- Con `tabindex="0"` el tooltip es alcanzable con teclado; sin JS o en un PDF
+  sigue legible el texto del flujo.
+- `role="note"` es opcional: no aporta mucho aquí porque el texto adyacente ya
+  da contexto. Si lo mantienes, no lo uses como sustituto de un `<caption>`.
+
 ## Barras in-cell (en tablas)
 
 Para comparar filas de una tabla sin gráfica aparte (ver `svg-charts.md` §10):
 `<td class="cell-bar" style="--w:85;--bc:var(--success)">85 %</td>`. El color
 semántico comunica estado: verde = bueno, ámbar = vigilar, rojo = riesgo.
+
+- La celda lleva **el valor en texto**, no solo la barra: el color nunca es la
+  única señal y el dato es legible sin CSS.
 
 ## Heatmap / matriz de prioridad
 
@@ -160,12 +245,15 @@ análisis. Con leyenda de gradiente.
 ## Badges / etiquetas
 
 Píldoras para estados: `Cumplido`, `En curso`, `Riesgo`. Colores semánticos de
-la paleta. Usar en tablas y cabeceras de sección.
+la paleta. Usar en tablas y cabeceras de sección. El texto del badge ES la
+etiqueta: no pongas solo el color, y no uses el color como única señal del
+estado.
 
 ## Insignia de tendencia
 
 Flecha + % acompañando cifras: ▲ 12 % (subida), ▼ 3 % (baja), → 0 % (plana).
-Siempre con el color semántico correspondiente.
+Siempre con el color semántico correspondiente, siempre con signo o etiqueta
+explícita (`+12 %`, `−4 pts`, `Por encima de meta`).
 
 ## Reglas de composición de infografía
 
@@ -173,7 +261,10 @@ Siempre con el color semántico correspondiente.
 - Jerarquía visual: valor > etiqueta > contexto.
 - Máximo 3 colores de acento por infografía (además de neutros).
 - Informes con >6 secciones llevan TOC (navegable) + panel "Lo más importante".
-- Respeta `prefers-reduced-motion` en cualquier animación; usa `data-*` del skeleton.
+- Las animaciones `data-*` del skeleton son opt-in y deben respetar
+  `prefers-reduced-motion`; ver `references/movimiento.md`.
+- Los SVG decorativos llevan `aria-hidden="true" focusable="false"`; los
+  informativos, nombre accesible. Ver `references/accesibilidad-ux.md`.
 - Si el bloque no aporta a la sección, sácalo: la claridad gana a la decoración.
 - Todos los iconos del sprite `assets/iconos.svg`; nunca emojis como fuente única.
 - Toda infografía con cifra protagonista admite `data-count`; el valor final va siempre en el HTML.
