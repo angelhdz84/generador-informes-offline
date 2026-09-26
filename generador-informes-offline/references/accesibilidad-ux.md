@@ -179,8 +179,9 @@ Cuando dos reglas entren en conflicto, gana este orden:
 
 ### Automático
 
-- `node scripts/validar-offline.mjs informe.html --strict` termina limpio
-  (código 0, sin blockers ni warnings).
+- `node $SKILL/scripts/validar-offline.mjs informe.html --strict` termina limpio
+  (código 0, sin blockers ni warnings). `$SKILL` es la raíz de esta skill, no el
+  directorio de trabajo: ver la sección "Rutas de esta skill" en `SKILL.md`.
 - Si tocaste el validador, sus fixtures siguen verdes:
   `node --test scripts/validar-offline.test.mjs`.
 - Reparto de los checks (una línea cada una, para saber qué revisar cuando

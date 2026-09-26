@@ -36,6 +36,7 @@ generador-informes-offline/
 │                             # tipos, accesibilidad-ux (baseline obligatorio)
 ├── scripts/
 │   ├── validar-offline.mjs       # validador 100% offline (modo --strict, --json)
+│   ├── smoke.mjs                 # prueba de instalación, válida desde cualquier cwd
 │   └── validar-offline.test.mjs  # fixtures unitarios del validador
 └── evals/                    # suite de evaluaciones
 ```
@@ -54,10 +55,32 @@ opencode, por ejemplo:
 ~/.config/opencode/skills/generador-informes-offline/
 ```
 
+Queda disponible en **todos** tus proyectos. Ojo: las rutas internas de la skill
+(`references/…`, `assets/…`, `scripts/…`) son relativas a **esa** carpeta, no al
+proyecto desde el que la uses, así que los comandos hay que lanzarlos contra la
+raíz de la skill.
+
+## Comprobación de la instalación
+
+```bash
+node "$SKILL/scripts/smoke.mjs"
+```
+
+Rellena la plantilla con un informe mínimo y lo valida en `--strict`. Es válido
+desde cualquier directorio: el script se resuelve a sí mismo con
+`import.meta.url`. Si sale limpio, la instalación está operativa.
+
+En PowerShell, `~` no se expande de forma fiable como argumento de `node`:
+
+```powershell
+$SKILL = "$env:USERPROFILE\.config\opencode\skills\generador-informes-offline"
+node "$SKILL\scripts\smoke.mjs"
+```
+
 ## Validación
 
 ```bash
-node "generador-informes-offline/scripts/validar-offline.mjs" <informe.html> --strict
+node "$SKILL/scripts/validar-offline.mjs" <informe.html> --strict
 ```
 
 El validador comprueba la autocontención (errores, siempre bloqueantes) y una

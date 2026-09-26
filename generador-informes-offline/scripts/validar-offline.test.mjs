@@ -10,7 +10,7 @@
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, existsSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -585,4 +585,58 @@ test('regresión: la plantilla solo avisa de sus propios placeholders', (t) => {
   for (const w of r.warningsList) {
     assert.match(w, /Sin <footer>|<h1>|placeholder|theme-color/);
   }
+});
+
+// --- portabilidad de la skill ---------------------------------------------
+//
+// La skill se instala a nivel de usuario y se usa desde proyectos cuyo cwd NO es
+// la raíz de la skill. Estas pruebas fijan esa condición: si alguien vuelve a
+// documentar o implementar una ruta relativa al cwd, el smoke falla.
+
+const SMOKE = join(dirname(fileURLToPath(import.meta.url)), 'smoke.mjs');
+const RAIZ_SKILL = join(dirname(fileURLToPath(import.meta.url)), '..');
+// Directorio limpio y sin relación con la skill, para simular "otro proyecto".
+const cwdAjeno = mkdtempSync(join(tmpdir(), 'cwd-ajeno-'));
+
+test('portabilidad: el smoke valida un informe desde un cwd ajeno a la skill', () => {
+  if (!existsSync(SMOKE)) return; // copia aislada del script de pruebas
+  const r = execFileSync(process.execPath, [SMOKE, '--json'], {
+    encoding: 'utf8', cwd: cwdAjeno, stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  const s = JSON.parse(r);
+  assert.equal(s.ok, true, s.salida);
+  assert.equal(s.codigo, 0);
+  // El smoke se resuelve a la raíz de la skill, no al cwd donde se lanzó.
+  assert.equal(s.cwd, cwdAjeno, 'el smoke no debe cambiar de cwd');
+  assert.equal(s.raiz, RAIZ_SKILL, 'la raíz debe derivarse de la ubicación del propio smoke');
+});
+
+test('portabilidad: el smoke limpia su temporal y no escribe en el cwd', () => {
+  if (!existsSync(SMOKE)) return;
+  execFileSync(process.execPath, [SMOKE, '--json'], { encoding: 'utf8', cwd: cwdAjeno, stdio: ['ignore', 'pipe', 'pipe'] });
+  const sueltos = readdirSync(cwdAjeno);
+  assert.deepEqual(sueltos, [], `el smoke no debe escribir en el cwd: ${sueltos.join(', ')}`);
+});
+
+test('portabilidad: SKILL.md declara la raíz y no manda rutas relativas al cwd', () => {
+  const md = join(RAIZ_SKILL, 'SKILL.md');
+  if (!existsSync(md)) return; // copia aislada del script de pruebas
+  const texto = readFileSync(md, 'utf8');
+  // 1. Declara explícitamente que las rutas son relativas a la raíz de la skill.
+  assert.match(texto, /Rutas de esta skill/i, 'falta la sección de rutas en SKILL.md');
+  assert.match(texto, /\.config[\\/]opencode[\\/]skills[\\/]generador-informes-offline/,
+    'falta la ruta canónica de instalación');
+  // 2. Ningún comando ejecutable puede quedar con la ruta desnuda: es justo lo
+  //    que falla con MODULE_NOT_FOUND fuera de la raíz de la skill. Se barre todo
+  //    el documento (código inline Y bloques cercados) tomando el primer
+  //    argumento de cada invocación de `node`.
+  const args = [...texto.matchAll(/\bnode\s+["']?([^\s"'`\n]+)/g)].map((m) => m[1]);
+  assert.ok(args.length > 0, 'no se encontró ningún comando node en SKILL.md');
+  for (const a of args) {
+    assert.doesNotMatch(a, /^(?:scripts|assets|references)[\\/]/,
+      `SKILL.md invoca node con una ruta relativa al cwd: node ${a}`);
+  }
+  // 3. Las referencias siguen siendo atajos relativos a la raíz (correcto), pero
+  //    el documento debe avisar de ello para que no se lean como rutas al proyecto.
+  assert.match(texto, /raíz de la skill/i);
 });

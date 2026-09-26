@@ -99,6 +99,28 @@ Resumen no negociable:
    node --test generador-informes-offline/scripts/validar-offline.test.mjs
    ```
 
+### Rutas: la skill es user-level, el proyecto no es su raíz
+
+La skill se instala en `%USERPROFILE%\.config\opencode\skills\`
+(`~/.config/opencode/skills/`), así que está disponible en todos los proyectos.
+Sus rutas internas (`references/…`, `assets/…`, `scripts/…`) son **relativas a la
+raíz de la skill**, no al proyecto en el que se usa: el agente corre con el cwd
+del proyecto y `node scripts/validar-offline.mjs` falla con `MODULE_NOT_FOUND`.
+
+Al tocar la skill, deja los comandos resolubles contra la raíz. En PowerShell
+`~` no se expande fiable como argumento de `node`; usa:
+
+```powershell
+$SKILL = "$env:USERPROFILE\.config\opencode\skills\generador-informes-offline"
+node "$SKILL\scripts\smoke.mjs"          # o validar-offline.mjs informe.html --strict
+```
+
+`scripts/smoke.mjs` es la prueba de que la instalación está sana: rellena la
+plantilla y valida en `--strict`, resolviéndose a sí mismo vía `import.meta.url`
+para que funcione desde cualquier cwd. Hay tres fixtures que lo fijan, y
+**están probados en negativo**: si alguien reintroduce una ruta desnuda o
+borra la sección "Rutas de esta skill" de `SKILL.md`, fallan.
+
 ### Los 4 warnings de `plantilla-base.html` son los esperados
 
 Validar el skeleton sin rellenar da **exactamente 4 warnings**, no 0, porque
@@ -122,6 +144,7 @@ por sí solo; los informes generados sí.
 │   ├── references/            # diseno, svg-charts, infografias, movimiento, tipos-informe, accesibilidad-ux
 │   ├── scripts/
 │   │   ├── validar-offline.mjs      # validador (A1-A7, C1-C13, --strict, --json)
+│   │   ├── smoke.mjs                # prueba de instalación: rellena la plantilla y valida desde cualquier cwd
 │   │   └── validar-offline.test.mjs # fixtures unitarios del validador
 │   └── evals/                 # suite de evaluaciones
 └── logo/                      # logos del cliente (blanco.png, azul.png, negro.png)

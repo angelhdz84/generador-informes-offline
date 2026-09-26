@@ -33,6 +33,51 @@ Convierte información en un informe profesional contenido en **un solo archivo
 `.html`** que funciona sin internet desde el primer segundo. Cero CDN, cero
 webfonts, cero peticiones de red: **todo vive dentro del archivo**.
 
+## Rutas de esta skill (léelo antes de usar nada)
+
+Esta skill se instala a **nivel de usuario**, así que está disponible en todos
+los proyectos. **Las rutas que aparecen en este documento son relativas a la
+raíz de la skill**, no al proyecto en el que estés trabajando. El agente corre
+con el cwd del proyecto del usuario, así que una ruta como
+`scripts/validar-offline.mjs` **no resuelve** y falla con `MODULE_NOT_FOUND`.
+
+Resuelve SIEMPRE contra la raíz de la skill antes de leer o ejecutar nada:
+
+| Sistema | Raíz de la skill |
+|---|---|
+| Windows (PowerShell, cmd) | `%USERPROFILE%\.config\opencode\skills\generador-informes-offline` |
+| macOS / Linux | `~/.config/opencode/skills/generador-informes-offline` |
+
+En PowerShell, `~` **no** se expande de forma fiable como argumento de `node`;
+usa la variable de entorno:
+
+```powershell
+$SKILL = "$env:USERPROFILE\.config\opencode\skills\generador-informes-offline"
+node "$SKILL\scripts\validar-offline.mjs" informe.html --strict
+```
+
+En macOS/Linux:
+
+```bash
+SKILL="$HOME/.config/opencode/skills/generador-informes-offline"
+node "$SKILL/scripts/validar-offline.mjs" informe.html --strict
+```
+
+Los atajos de este documento son siempre relativos a `$SKILL`: `$SKILL/assets/
+plantilla-base.html`, `$SKILL/references/svg-charts.md`, etc. **No** son
+relativos al proyecto del usuario.
+
+Si la skill viviera en otro layout (instalada como plugin, o en un checkout
+clonado), su raíz es **el directorio que contiene este `SKILL.md`**. Localízalo
+una vez y usa esa base durante toda la tarea.
+
+Comprobación rápida de que todo está en su sitio, válida desde cualquier
+directorio:
+
+```bash
+node "$SKILL/scripts/smoke.mjs"
+```
+
 ## Filosofía (por qué existe esta skill)
 
 El usuario abre el informe haciendo doble clic y todo debe verse y funcionar
@@ -184,7 +229,15 @@ Baseline de accesibilidad y lectura (OBLIGATORIO, ver
 
 ### Fase 5 — Validación offline
 
-1. Guarda el HTML y valida: `node scripts/validar-offline.mjs informe.html --strict`
+1. Guarda el HTML y valida. `$SKILL` es la raíz de esta skill (**no** el cwd):
+
+   ```powershell
+   $SKILL = "$env:USERPROFILE\.config\opencode\skills\generador-informes-offline"
+   node "$SKILL\scripts\validar-offline.mjs" informe.html --strict
+   ```
+
+   Si `node "$SKILL\scripts\smoke.mjs"` salió limpio al principio, la instalación
+   está bien y este comando ya solo depende de tu informe.
 2. El script comprueba 0-internet (errores que bloquean) y diseño (warnings).
    Con `--strict`, ambos bloquean: corrige TODOS los hallazgos y revalida hasta
    salir limpio (código 0). Sin `--strict` los warnings solo se informan.
