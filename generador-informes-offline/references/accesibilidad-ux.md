@@ -81,6 +81,22 @@ Cuando dos reglas entren en conflicto, gana este orden:
   componentes. AAA es deseable, no una promesa ambigua del validador.
 - El color nunca es la única señal. Acompáñalo con texto, signo, forma,
   icono o patrón.
+- **Un color de acento no se usa tal cual: ni como texto ni como cromo.**
+  En la paleta `ejecutivo`, medido sobre la superficie tintada, el ámbar da
+  **2.15:1**, el verde **2.54:1** y el teal **2.49:1**: no llegan ni al 4.5:1 del
+  texto ni al 3:1 de los elementos no textuales. Por eso hay tres mezclas con
+  `--text`, cada una con su umbral:
+
+  | Token | Umbral | Para qué |
+  |---|---|---|
+  | `--accent-line` (`--text` 30 %) | 3:1 | filete, línea, borde de tabla, borde de bloque |
+  | `--accent-text` (`--text` 50 %) | 4.5:1 | texto del badge, del eyebrow |
+  | `--accent-ink` (`--text` 68 %) | 4.5:1 | cifras grandes de KPI |
+
+  La cuota no es una cuestión de gusto: bajar el texto del 50 % al 38 % lo deja
+  en 3.8–4.3:1 en las tres series claras, y el badge de ese bloque deja de
+  leerse. **C1 mide las tres cuotas** y avisa si alguna serie no llega, así que
+  el defecto salta en `--strict` y no cuando alguien imprime el informe.
 - Los iconos decorativos se ocultan del árbol de accesibilidad **y** del
   recorrido de foco en exploradores antiguos:
 
@@ -196,8 +212,16 @@ Cuando dos reglas entren en conflicto, gana este orden:
     embebida.
   - **A6** — `fetch` / `XMLHttpRequest` / `WebSocket` en el JS inline.
   - **A7** — `<use>` con referencia externa.
-  - **C1** — contraste AA de los tokens: `--text` y `--muted` sobre
-    `--surface`, y `--text` sobre `--bg`.
+  - **C1** — contraste de los tokens. Los de texto: `--text` y `--muted`
+    sobre `--surface`, y `--text` sobre `--bg`. Y los de acento: resuelve el
+    `color-mix` de `--accent-line`, `--accent-text` y `--accent-ink` con
+    cada uno de los siete colores de serie, y exige 3:1 para el cromo y
+    4.5:1 para el texto, contra **las cuatro superficies donde el texto se
+    pinta de verdad** (la base, el fondo, el `--head-bg` y el `--zebra`).
+    Es aviso y no bloqueante, porque el resultado depende de la paleta de
+    cada informe. Si el informe no declara `--chart-1..7`, se calla en vez
+    de publicarse una medida que no ha hecho. Solo entiende la forma
+    `color-mix(in srgb, var(--text) N%, ...)`: ante cualquier otra se calla.
   - **C2** — footer con los 5 campos de identidad (logo, empresa, contacto,
     autor, período) **y sin** autofirma de la skill.
   - **C3** — "Lectura:" bajo cada gráfica; el nombre accesible del SVG lo vigila
@@ -205,8 +229,9 @@ Cuando dos reglas entren en conflicto, gana este orden:
   - **C4** — índice (TOC) cuando hay más de 6 secciones.
   - **C5** — secciones sin contenido sustancial, con las `<section>` anidadas
     emparejadas por pila.
-  - **C6** — reduced motion con estado final, print al estado final y gate
-    `html.js` del estado inicial oculto.
+  - **C6** — reduced motion con estado final, print al estado final, gate
+    `html.js` del estado inicial oculto, sin `scale(0)` en entradas y sin
+    `transition: all`. Cubre también `data-hero` y `data-rule`.
   - **C7** — un `<main>`, un `<h1>`, jerarquía sin saltos, `<title>` sin
     placeholder, cada `<nav>` con nombre, `:focus-visible` con `outline`,
     sin `tabindex` positivo y sin `outline:none` sin sustituto.
@@ -221,6 +246,24 @@ Cuando dos reglas entren en conflicto, gana este orden:
     topbar sticky.
   - **C13** — `color-scheme` en `:root`/`html` y `<meta name="theme-color">`
     con el color real, coherentes con el tema inicial.
+  - **C14** — colores literales fuera de un token. **Bloqueante** en el CSS y
+    **aviso** en los atributos de presentación (`fill`, `stroke`, `color`,
+    `stop-color`, `style=""`). Quedan exentos: las declaraciones `--x: valor`
+    (`:root`, `[data-theme="dark"]` y cualquier override futuro), los neutros
+    `#fff/#ffffff/#000/#000000`, y el color de `<meta name="theme-color">`
+    (lo rellena la paleta). Se ignoran los comentarios CSS y los selectores que
+    solo parecen un color (`#face{}`).
+  - **C15** — el acento derivado tiene que seguir a la sección. **Aviso** (no
+    bloqueante). Si algún selector `[data-accent…]` remapea `--accent`, debe
+    existir otro `[data-accent…]` que declare los tres derivados
+    (`--accent-line`, `--accent-text`, `--accent-ink`); si no, nombra los que
+    faltan y explica por qué (`se resolverian en :root contra --primary`).
+    Es estructural a propósito: una custom property sustituye sus `var()` en
+    el elemento donde se **declara**, así que el derivado escrito solo en
+    `:root` se congela contra el `--primary` de la página entera. El fondo del
+    badge sí cambia de sección (su `color-mix` se evalúa en el propio
+    elemento), y por eso el fallo se parece a un descuido de estilo y no a un
+    error.
 
 `--strict` cubre esta capa determinista. No sustituye el checklist manual: hay
 requisitos que un regex no puede juzgar.
@@ -236,6 +279,17 @@ requisitos que un regex no puede juzgar.
 - Con la tabla más ancha del informe, confirma que la página no hace scroll
   horizontal: solo la tabla dentro de `.table-wrap`.
 - Sin errores de consola; reduced motion y estado sin JS revisados.
+- **Estado de lectura**: con un informe largo, al abrir con un ancla
+  (`informe.html#s3`), al recargar con el scroll restaurado y al volver de
+  la caché del navegador, la barra `.read-progress` tiene que marcar el
+  punto de lectura y el enlace activo del índice llevar `aria-current`. No
+  hay check que lo valide —lo escribe el JS en runtime— y es el fallo que
+  más se cuela, porque en una carga normal desde arriba sí funciona.
+- **Estado de lectura**: `aria-current` en el enlace activo del índice y la
+  barra `.read-progress` advancing al desplazar. No hay check que lo valide
+  porque lo escribe el runtime en ejecución, no el HTML: compruébalo a mano,
+  y comprueba también que **al abrir el informe en un ancla** (`informe.html#s1`)
+  la barra y el índice ya salen en su sitio, sin tener que desplazar.
 - Imprimir → Guardar como PDF: topbar oculto, animaciones finales y piezas sin
   cortes.
 

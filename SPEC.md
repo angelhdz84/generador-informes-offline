@@ -151,7 +151,8 @@ node generador-informes-offline/scripts/validar-offline.mjs <informe.html> [--st
   símbolos del sprite existentes, dimensiones de `<img>`, `overflow-wrap`,
   `text-wrap`, `scroll-padding-top`/`scroll-margin-top` con topbar sticky,
   `color-scheme`/`theme-color`, ids duplicados, punto final del bloque
-  reduced-motion.
+  reduced-motion, contraste de los tokens de acento y recálculo de los
+  derivados del acento donde se remapea `--accent`.
 - Códigos de salida: `0` = limpio, `1` = hallazgos (o warnings con `--strict`),
   `2` = mal uso.
 - `--strict` cubre la capa determinista. **No sustituye** al checklist manual de

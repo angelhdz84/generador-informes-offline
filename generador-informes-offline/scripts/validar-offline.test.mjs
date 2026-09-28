@@ -40,9 +40,21 @@ function run(html, { strict = true } = {}) {
 const SPRITE = '<svg aria-hidden="true" style="display:none"><defs><symbol id="i-x" viewBox="0 0 24 24"><line x1="4" y1="4" x2="20" y2="20"/></symbol></defs></svg>';
 const ICONO = '<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-x"></use></svg>';
 
+// Paleta de series y tokens de acento con las cuotas MEDIDAS, no estimadas:
+// 30% deja el cromo del filete en 3:1 o mas; 50% lleva el texto del badge a
+// 4.5:1 en las siete series; 68% es para el texto grande de los KPI, donde el
+// tono todavia tiene que leerse.
+const TOKENS_ACCENTO = `
+  --chart-1:#1e3a8a;--chart-2:#3b82f6;--chart-3:#f59e0b;--chart-4:#10b981;
+  --chart-5:#8b5cf6;--chart-6:#ef4444;--chart-7:#14b8a6;
+  --accent:var(--primary);
+  --accent-line:color-mix(in srgb,var(--text) 30%,var(--accent));
+  --accent-text:color-mix(in srgb,var(--text) 50%,var(--accent));
+  --accent-ink:color-mix(in srgb,var(--text) 68%,var(--accent));`;
+
 const CSS_BASE = `
 :root{color-scheme:light;--bg:#f6f8fb;--surface:#ffffff;--text:#1f2937;--muted:#4b5563;
-  --border:#e5e7eb;--primary:#1e3a8a;
+  --border:#e5e7eb;--primary:#1e3a8a;/*TOKENS*/
   --motion-ease:cubic-bezier(.23,1,.32,1);--motion-duration:240ms;--motion-delay:80ms;}
 html{scroll-behavior:smooth;scroll-padding-top:88px}
 body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;line-height:1.6;
@@ -70,7 +82,7 @@ html.js:not(.no-anim) [data-grow].in{transform:scaleY(1)}
   html.js [data-reveal]{opacity:1!important;transform:none!important}}`;
 
 /** Informe de referencia: cumple todo el baseline y pasa --strict limpio. */
-function informe({ head = '', css = '', main = '', footer } = {}) {
+function informe({ head = '', css = '', main = '', footer, tokens = TOKENS_ACCENTO } = {}) {
   const pie = footer ?? `<footer><img src="data:image/png;base64,iVBORw0KGgo=" alt="Acme" width="60" height="40">
       <strong>Acme S.L.</strong>
       <address>Calle Mayor 1 · acme.example</address>
@@ -84,7 +96,7 @@ function informe({ head = '', css = '', main = '', footer } = {}) {
 <meta name="theme-color" content="#f6f8fb">
 <title>Informe de prueba</title>
 ${head}
-<style>${CSS_BASE}${css}</style>
+<style>${CSS_BASE.replace('/*TOKENS*/', tokens)}${css}</style>
 </head>
 <body>
 ${SPRITE}
@@ -556,6 +568,368 @@ test('C13: los metas se resuelven por atributo, no por orden', () => {
 
   const sinRoot = run(informe().replace(':root{color-scheme:light;', ':root{'));
   assert.match(sinRoot.warningsList.join('\n'), /Falta color-scheme en CSS/);
+});
+
+
+// ---------- C14: la paleta vive en los tokens ----------
+
+test('C14: un gris repetido por la hoja bloquea, aunque salga en dos reglas', () => {
+  // El caso real: #f1f5f9 en el fondo de th, en el hover de fila, en el pie de
+  // tabla y en el hover del indice. Es un token disfrazado de decision local.
+  const r = run(informe({ css: '.card{background:#f1f5f9}\n.note{background:#f1f5f9}' }));
+  assert.match(r.blockersList.join('\n'), /C14/);
+  assert.match(r.blockersList.join('\n'), /#f1f5f9/);
+  // Una sola vez: el aviso cuenta colores unicos, no apariciones.
+  assert.equal(r.blockersList.filter((b) => /C14/.test(b)).length, 1, r.blockersList.join('\n'));
+});
+
+test('C14: el color de una paleta si se escribe literal, pero en su token', () => {
+  // La zona exenta son las DECLARACIONES `--x: valor`: sin ellas ninguna paleta
+  // se podria escribir, y un bloque `[data-theme="dark"]` contaria como falta.
+  const conToken = run(informe({ css: ':root{--card:#f1f5f9}\n.card{background:var(--card)}' }));
+  assert.doesNotMatch(conToken.blockersList.join('\n'), /C14/);
+  assert.equal(conToken.blockers, 0, conToken.blockersList.join('\n'));
+
+  const porAtributo = run(informe({ css: '[data-theme="dark"]{--bg:#0f172a}\n.card{background:var(--bg)}' }));
+  assert.doesNotMatch(porAtributo.blockersList.join('\n'), /C14/);
+});
+
+test('C14: los neutros puros quedan exentos (el blanco ES el token)', () => {
+  // Sobre un hero o un acento, escribir el blanco a mano es lo correcto.
+  const r = run(informe({
+    css: '.hero{background:#000}\n.hero .logo{color:#fff}\n.card{border-color:#000000}\n.hl{color:#ffffff}',
+  }));
+  assert.doesNotMatch(r.blockersList.join('\n'), /C14/, r.blockersList.join('\n'));
+  // En cambio un gris de la paleta no es un neutro: bloquea aunque se parezca.
+  const gris = run(informe({ css: '.hero{color:#6b7280}' }));
+  assert.match(gris.blockersList.join('\n'), /#6b7280/);
+});
+
+test('C14: no confunde un id que parece color ni un comentario que no se pinta', () => {
+  const idSelector = run(informe({ css: '#face{color:inherit}' }));
+  assert.doesNotMatch(idSelector.blockersList.join('\n'), /C14/, idSelector.blockersList.join('\n'));
+
+  const comentario = run(informe({ css: '/* el gris del encabezado era #f1f5f9 */\n.card{border:0}' }));
+  assert.doesNotMatch(comentario.blockersList.join('\n'), /C14/, comentario.blockersList.join('\n'));
+});
+
+test('C14: la zona exenta cubre declaraciones pegadas y seguidas al separador', () => {
+  // La zona exenta se ancla al separador previo (`^`, `;`, `{`). El fallo que
+  // evita es sutil: si el grupo no captura, el `$1` de la sustitucion se
+  // convierte en la palabra "undefined" pegada al texto, la declaracion de
+  // :root deja de borrarse y la paleta entera se reporta como color suelto.
+  const pegadas = run(informe({ css: '.card{--a:#ff0000;--b:#00ff00;border:0}' }));
+  assert.doesNotMatch(pegadas.blockersList.join('\n'), /C14/, pegadas.blockersList.join('\n'));
+  assert.equal(pegadas.blockers, 0, pegadas.blockersList.join('\n'));
+
+  // Un literal dentro de var() SI es una decision (es un fallback, no un token),
+  // asi que se reporta: el borrado no debe arrastrarselo.
+  const fallback = run(informe({ css: '.card{background:var(--z,#f1f5f9)}' }));
+  assert.match(fallback.blockersList.join('\n'), /#f1f5f9/, fallback.blockersList.join('\n'));
+});
+
+test('C14: el color de <meta name="theme-color"> no se mira a proposito', () => {
+  // Lo rellena la paleta y en un informe ya es el fondo real, no una decision de
+  // estilo: exigir un token ahi obligaria a duplicar el fondo del :root.
+  const r = run(informe().replace('<meta name="theme-color" content="#f6f8fb">', '<meta name="theme-color" content="#1e3a8a">'));
+  assert.doesNotMatch(r.blockersList.join('\n'), /C14/, r.blockersList.join('\n'));
+  assert.doesNotMatch(r.warningsList.join('\n'), /C14/, r.warningsList.join('\n'));
+});
+
+test('C14: en atributos de presentacion el literal avisa pero no bloquea', () => {
+  const serie = (attrs) => `<figure class="chart">
+  <svg viewBox="0 0 600 200" role="img" aria-label="Serie por mes">${attrs}</svg>
+  <figcaption class="chart-caption"><strong>Lectura:</strong> crece cada mes.</figcaption>
+</figure>`;
+
+  // Un `fill="#6b7280"` fija en el SVG el gris de un token y rompe el "mismo
+  // color = misma serie" en cuanto se cambia de paleta. Avisa, pero el SVG a
+  // veces necesita el color tal cual, asi que no bloquea.
+  const gris = run(informe({ main: serie('<rect x="10" y="10" width="100" height="80" fill="#6b7280"></rect>') }));
+  assert.match(gris.warningsList.join('\n'), /C14/);
+  assert.match(gris.warningsList.join('\n'), /#6b7280/);
+  assert.doesNotMatch(gris.blockersList.join('\n'), /C14/);
+
+  // El blanco sobre un acento es legitimo: no avisa.
+  const blanco = run(informe({ main: serie('<rect x="10" y="10" width="100" height="80" fill="#ffffff"></rect>') }));
+  assert.doesNotMatch(blanco.warningsList.join('\n'), /C14/, blanco.warningsList.join('\n'));
+
+  // Con token no hay ni aviso.
+  const conToken = run(informe({ main: serie('<rect x="10" y="10" width="100" height="80" fill="var(--muted)"></rect>') }));
+  assert.doesNotMatch(conToken.warningsList.join('\n'), /C14/, conToken.warningsList.join('\n'));
+
+  // Un style="" en linea tambien entra en el barrido, y un token declarado
+  // dentro de el si se respeta: definir `--x` ahi es una paleta local legitima.
+  const enLinea = run(informe({ main: '<div style="fill:#ff8800">x</div>' }));
+  assert.match(enLinea.warningsList.join('\n'), /#ff8800/);
+  const tokenEnLinea = run(informe({ main: '<div style="--c:#ff8800">x</div>' }));
+  assert.doesNotMatch(tokenEnLinea.warningsList.join('\n'), /C14/, tokenEnLinea.warningsList.join('\n'));
+});
+
+// ---------- C6: data-hero y data-rule ----------
+
+test('C6: data-hero y data-rule exigen estado final, como los demas', () => {
+  // Un portada que se abre con opacidad 0 se queda en blanco para quien pide
+  // menos movimiento, que es justo a quien no le va a cerrar la transicion.
+  const sinEstado = run(informe({ main: '<div data-hero>Portada</div>' })
+    .replace(/html\.js \[data-reveal\][\s\S]*?stroke-dashoffset:0!important\}/, ''));
+  assert.match(sinEstado.warningsList.join('\n'), /no fija el estado final/);
+
+  // Con el estado final presente pasa limpio.
+  const conEstado = run(informe({ main: '<div data-hero>Portada</div>' }));
+  assert.doesNotMatch(conEstado.warningsList.join('\n'), /no fija el estado final/);
+});
+
+test('C6: el estado inicial oculto de data-hero tambien va gated por html.js', () => {
+  const sinGate = run(informe({ css: '[data-hero]{opacity:0}', main: '<div data-hero>Portada</div>' }));
+  assert.match(sinGate.warningsList.join('\n'), /gating `html\.js`/);
+
+  const conGate = run(informe({
+    css: 'html.js:not(.no-anim) [data-hero]{opacity:0}\nhtml.js:not(.no-anim) [data-hero].in{opacity:1}',
+    main: '<div data-hero>Portada</div>',
+  }));
+  assert.doesNotMatch(conGate.warningsList.join('\n'), /gating `html\.js`/);
+});
+
+test('C6: data-rule usa una escala no singular', () => {
+  // scaleX(0) es una singularidad: no se puede deshacer y provoke CLS. La regla
+  // arranca en .01, que es visualmente el mismo cero pero reversible.
+  const singular = run(informe({
+    css: 'html.js:not(.no-anim) [data-rule]{transform:scaleX(0)}',
+    main: '<i class="rule" data-rule></i>',
+  }));
+  assert.match(singular.warningsList.join('\n'), /scale\(0\)/);
+
+  const ok = run(informe({
+    css: 'html.js:not(.no-anim) [data-rule]{transform:scaleX(.01)}\nhtml.js:not(.no-anim) [data-rule].in{transform:scaleX(1)}',
+    main: '<i class="rule" data-rule></i>',
+  }));
+  assert.doesNotMatch(ok.warningsList.join('\n'), /scale\(0\)/);
+});
+
+test('C6: la plantilla, el motor y el validador conocen los mismos data-*', () => {
+  // Una sola fuente de verdad: si se anade un atributo al motor y no a la
+  // plantilla, el informe animara con un estado inicial que la hoja no define.
+  const plantilla = join(RAIZ_SKILL, 'assets', 'plantilla-base.html');
+  const motor = join(RAIZ_SKILL, 'assets', 'motion.min.js');
+  if (!existsSync(plantilla) || !existsSync(motor)) return; // copia aislada
+  const validador = readFileSync(VALIDADOR, 'utf8');
+  const attrs = validador.match(/MOTION_ATTRS\s*=\s*'([^']+)'/)[1].split('|');
+  const states = validador.match(/MOTION_STATES\s*=\s*'([^']+)'/)[1].split('|');
+  const css = readFileSync(plantilla, 'utf8');
+  const js = readFileSync(motor, 'utf8');
+  assert.ok(attrs.length >= 10, `MOTION_ATTRS solo conoce ${attrs.length} atributos`);
+  assert.ok(states.length >= 8, `MOTION_STATES solo conoce ${states.length} atributos`);
+  for (const a of states) {
+    assert.ok(attrs.includes(a), `data-${a} fuerza estado final pero no esta en MOTION_ATTRS`);
+    assert.match(css, new RegExp(`data-${a}`), `plantilla-base.html sin data-${a}`);
+    assert.match(js, new RegExp(`data-${a}`), `motion.min.js sin data-${a}`);
+  }
+
+  // Y lo que de verdad importa: en el esqueleto, cada atributo que deja el
+  // elemento oculto tiene que quedar en su estado final tanto con movimiento
+  // reducido como al imprimir. Si no, la portada se abre en blanco en PDF.
+  const mediaBlock = (hoja, re) => {
+    const m = hoja.match(re);
+    if (!m) return null;
+    const resto = hoja.slice(m.index + m[0].length);
+    const sig = resto.search(/@media\b/);
+    return sig < 0 ? resto : resto.slice(0, sig);
+  };
+  const reduced = mediaBlock(css, /@media\s*\(\s*prefers-reduced-motion/);
+  const print = mediaBlock(css, /@media\s*print\b/);
+  assert.ok(reduced, 'la plantilla no tiene bloque prefers-reduced-motion');
+  assert.ok(print, 'la plantilla no tiene bloque print');
+  for (const a of states) {
+    assert.match(reduced, new RegExp(`data-${a}`), `reduced-motion de la plantilla sin data-${a}`);
+    assert.match(print, new RegExp(`data-${a}`), `print de la plantilla sin data-${a}`);
+  }
+});
+
+test('C6: el estado de lectura no se arregla con CSS, lo pone el motor', () => {
+  // `aria-current` lo escribe el scroll-spy en runtime, asi que no puede haber
+  // un check que lo exija en el HTML. Lo que si se fija es que el motor lo haga,
+  // y que el estilo de la fila activa exista (si no, el estado seria invisible).
+  const motor = join(RAIZ_SKILL, 'assets', 'motion.min.js');
+  if (!existsSync(motor)) return; // copia aislada
+  const js = readFileSync(motor, 'utf8');
+  assert.match(js, /setAttribute\('aria-current'/, 'el motor no marca la entrada activa del indice');
+  assert.match(js, /\.read-progress i/, 'el motor no mueve la barra de progreso');
+  const plantilla = readFileSync(join(RAIZ_SKILL, 'assets', 'plantilla-base.html'), 'utf8');
+  assert.match(plantilla, /\.toc a\[aria-current="true"\]/, 'sin estilo, el estado activo no se ve');
+  assert.match(plantilla, /<div class="read-progress"/, 'la barra de progreso no esta en la plantilla');
+});
+
+test('C6: el estado de lectura se recalcula aunque no haya evento de scroll', () => {
+  // Abrir el informe en un ancla, recargar con la posicion restaurada o volver
+  // desde la cache del navegador deja la pagina desplazada SIN evento de scroll.
+  // Sin estos tres oyentes la barra se queda en cero y el indice sin marcar
+  // hasta que el visitante mueva la rueda.
+  const motor = join(RAIZ_SKILL, 'assets', 'motion.min.js');
+  if (!existsSync(motor)) return; // copia aislada
+  const js = readFileSync(motor, 'utf8');
+  for (const ev of ['load', 'hashchange', 'pageshow']) {
+    assert.match(js, new RegExp(`addEventListener\\('${ev}', update\\)`),
+      `el motor no recalcula el estado de lectura en "${ev}"`);
+  }
+  // Y de forma sincrona: colgarlo de un frame que puede no llegar congelaria la
+  // barra en cero. Por eso van a `update` y no a `schedule`.
+  assert.doesNotMatch(js, /addEventListener\('(?:load|hashchange|pageshow)', schedule\)/,
+    'el estado de lectura no debe depender de un frame para estos tres casos');
+});
+
+
+// ---------- C1: los tokens de acento tambien se miden ----------
+
+// La cuota que se coló en los tres informes: 38% de --text. Contra el blanco
+// daba 4.20:1 en el ambar, que casi pasa, pero contra la superficie TINTADA
+// (--head-bg, --zebra) baja a 3.81:1. Como el badge vive sobre la tintada, ese
+// era el contraste real, y por debajo de AA.
+const conCuota = (cuota) => TOKENS_ACCENTO.replace('var(--text) 50%,var(--accent));\n  --accent-ink', `var(--text) ${cuota}%,var(--accent));\n  --accent-ink`);
+
+test('C1: un --accent-text por debajo de 4.5:1 es warning, aunque el hex sea correcto', () => {
+  // El fallo que de verdad se cuela: nadie ve el hex, solo el token. Bajar la
+  // cuota del color-mix no rompe nada visible hasta que el informe se imprime.
+  const r = run(informe({ tokens: conCuota(38), css: '.badge.primary{color:var(--accent-text)}' }));
+  assert.match(r.warningsList.join('\n'), /--accent-text/);
+  assert.match(r.warningsList.join('\n'), /4\.5:1/);
+  // Y nombra las series concretas que no llegan, no un "algún color falla".
+  assert.match(r.warningsList.join('\n'), /chart-3/);
+  assert.match(r.warningsList.join('\n'), /chart-4/);
+  assert.match(r.warningsList.join('\n'), /chart-7/);
+  // Sin el acento no hay warning por C1 aunque el resto siga limpio.
+  assert.equal(r.blockers, 0, r.blockersList.join('\n'));
+});
+
+test('C1: las cuotas del skeleton cumplen, y el check lo dice', () => {
+  const r = run(informe({ css: '.badge.primary{color:var(--accent-text)}\n.h2wrap::before{background:var(--accent-line)}' }));
+  assert.equal(r.warningsList.length, 0, r.warningsList.join('\n'));
+  assert.equal(r.passed, true);
+  const ok = r.positives.join('\n');
+  assert.match(ok, /--accent-text \(50% de --text\) cumple 4\.5:1 como texto/);
+  assert.match(ok, /--accent-line \(30% de --text\) cumple 3:1 como cromo/);
+});
+
+test('C1: el acento se mide contra la superficie tintada, no solo contra el blanco', () => {
+  // Al 42% el ambar pasa contra blanco (4.57:1) y falla contra el --head-bg
+  // (4.08:1). Si el check mirara solo el blanco, este caso pasaria. Es
+  // justamente donde se pinta el badge, asi que el blanco no es la referencia.
+  const r = run(informe({ tokens: conCuota(42) }));
+  assert.match(r.warningsList.join('\n'), /--accent-text/);
+  assert.match(r.warningsList.join('\n'), /chart-3/);
+  // Y con la cuota buena, el mismo caso no dice nada.
+  const ok = run(informe({ tokens: conCuota(50) }));
+  assert.doesNotMatch(ok.warningsList.join('\n'), /--accent-text/);
+});
+
+test('C1: un --accent-line por debajo de 3:1 es warning', () => {
+  // El cromo no es texto: el umbral es 3:1, no 4.5:1. Aun asi, al 10% el ambar
+  // se pierde sobre el fondo, y un filete que no se ve no puede ser la identidad
+  // de color de la seccion.
+  const pocos = TOKENS_ACCENTO.replace('var(--text) 30%,var(--accent))', 'var(--text) 10%,var(--accent))');
+  const r = run(informe({ tokens: pocos }));
+  assert.match(r.warningsList.join('\n'), /--accent-line/);
+  assert.match(r.warningsList.join('\n'), /3:1/);
+  // Con 30% no dice nada: es el minimo medido para el cromo.
+  const ok = run(informe());
+  assert.doesNotMatch(ok.warningsList.join('\n'), /--accent-line/);
+});
+
+test('C1: sin paleta de series el check no inventa un fallo', () => {
+  // Un informe que no usa data-accent no tiene por que declarar --chart-1..7.
+  // El check se calla en vez de quejarse de un color que no ha medido.
+  const sinPaleta = TOKENS_ACCENTO.replace(/--chart-\d:[^;]+;\s*/g, '');
+  const r = run(informe({ tokens: sinPaleta }));
+  assert.doesNotMatch(r.warningsList.join('\n'), /--accent/, r.warningsList.join('\n'));
+  assert.doesNotMatch(r.positives.join('\n'), /--accent-line/);
+});
+
+test('C1: si la cuota no es legible, el check se calla en vez de inventar', () => {
+  // Tres formas de escribir el token que este check NO sabe medir, porque solo
+  // lee el patron `color-mix(in srgb, var(--text) N%, ...)`. En las tres lo
+  // correcto es no decir nada: ni un 0:1 inventado, ni un "cumple" que no ha
+  // medido. La limitation es del check, y se documenta en la referencia.
+  const variantes = [
+    ['hex fijo', '--accent-text:#f59e0b'],
+    ['oklab en vez de srgb', '--accent-text:color-mix(in oklab,var(--text) 50%,var(--accent))'],
+    ['el acento primero, el texto segundo', '--accent-text:color-mix(in srgb,var(--accent) 50%,var(--text))'],
+    ['cuota con decimales y separadores raros', '--accent-text:color-mix(in srgb,var(--text) 50.0%,var(--accent))'],
+  ];
+  for (const [nombre, decl] of variantes) {
+    const r = run(informe({ tokens: TOKENS_ACCENTO.replace('--accent-text:color-mix(in srgb,var(--text) 50%,var(--accent))', decl) }));
+    const ruido = r.warningsList.concat(r.positives).filter((m) => /--accent-text/.test(m));
+    assert.deepEqual(ruido, [], `${nombre}: el check no deberia hablar de lo que no midio (${JSON.stringify(ruido)})`);
+  }
+  // Con la forma que si sabe leer, sigue hablando. Si esto callara, el silencio
+  // de arriba no valdria nada.
+  const ok = run(informe());
+  assert.match(ok.positives.join('\n'), /--accent-text \(50% de --text\) cumple 4\.5:1/);
+});
+
+
+// ---------- C15: el acento derivado tiene que seguir a la seccion ----------
+
+// El mapa por atributo, tal como lo escribe la plantilla.
+const MAPA_ACCENTO = '[data-accent="1"]{--accent:var(--chart-1)}[data-accent="2"]{--accent:var(--chart-2)}';
+// El recalculo de los tres derivados, en el mismo elemento que remapea.
+const RECALCULO_ACENTO = '[data-accent]{--accent-line:color-mix(in srgb,var(--text) 30%,var(--accent));--accent-text:color-mix(in srgb,var(--text) 50%,var(--accent));--accent-ink:color-mix(in srgb,var(--text) 68%,var(--accent))}';
+
+test('C15: el acento derivado se recalcula donde se remapea', () => {
+  const r = run(informe({ css: MAPA_ACCENTO + RECALCULO_ACENTO, main: '<section data-accent="3"><h2>Bloque C</h2><p>Texto suficiente en la seccion para que C5 no la de por vacia.</p></section>' }));
+  assert.equal(r.warningsList.length, 0, r.warningsList.join('\n'));
+  assert.match(r.positives.join('\n'), /C15: los tokens derivados del acento se recalculan/);
+});
+
+test('C15: sin el recalculo avisa, porque el derivado se congela en :root', () => {
+  // El defecto exacto que se colo en los tres informes. Una custom property
+  // sustituye sus var() donde se DECLARA: --accent-text escrita en :root se
+  // resuelve una vez contra --primary y ese color concreto hereda a toda la
+  // pagina. El fondo del badge, en cambio, si sigue a la seccion, porque su
+  // color-mix se evalua en el propio elemento. Resultado: el fondo cambia y el
+  // texto no, y parece un descuido de estilo en vez de un error.
+  const r = run(informe({ css: MAPA_ACCENTO, main: '<section data-accent="3"><h2>Bloque C</h2><p>Texto suficiente en la seccion para que C5 no la de por vacia.</p></section>' }));
+  const w = r.warningsList.join('\n');
+  assert.match(w, /C15/);
+  assert.match(w, /--accent-line/);
+  assert.match(w, /--accent-text/);
+  assert.match(w, /--accent-ink/);
+  // Y explica por que importa, no solo que falta.
+  assert.match(w, /--primary/);
+  // Sigue siendo aviso, no bloqueo: el informe se lee igual, solo pierde el acento.
+  assert.equal(r.blockers, 0, r.blockersList.join('\n'));
+});
+
+test('C15: el aviso nombra solo lo que falta, no los tres', () => {
+  // Si alguien declara solo --accent-text y --accent-ink (que son los que se ven
+  // en pantalla), el filete se quedaria en el primario y el aviso tiene que seguir.
+  const parcial = '[data-accent]{--accent-text:color-mix(in srgb,var(--text) 50%,var(--accent));--accent-ink:color-mix(in srgb,var(--text) 68%,var(--accent))}';
+  const r = run(informe({ css: MAPA_ACCENTO + parcial }));
+  assert.match(r.warningsList.join('\n'), /--accent-line/);
+  assert.doesNotMatch(r.warningsList.join('\n'), /--accent-text,/);
+  assert.doesNotMatch(r.warningsList.join('\n'), /--accent-ink/);
+});
+
+test('C15: un informe que no usa data-accent no recibe el aviso', () => {
+  // Sin remapeo por atributo no hay nada que recalcular: el acento sale de
+  // :root y es coherente por construccion.
+  const r = run(informe());
+  assert.doesNotMatch(r.warningsList.join('\n'), /C15/);
+  assert.doesNotMatch(r.positives.join('\n'), /C15/);
+});
+
+test('C15: el recalculo cuenta con un selector mas especifico', () => {
+  // `[data-accent="3"]` recalculando los tres tambien vale: lo que importa es que
+  // se recalcule en el elemento que remapea, no la forma exacta del selector.
+  const r = run(informe({ css: MAPA_ACCENTO + '[data-accent="3"]{' + RECALCULO_ACENTO.slice(RECALCULO_ACENTO.indexOf('{') + 1) }));
+  assert.doesNotMatch(r.warningsList.join('\n'), /C15/);
+});
+
+test('C15: un comentario que mencione el patron no cuenta como recalculo', () => {
+  // El fallo se cuela justo al reescribir: alguien "arregla" el CSS dejando
+  // comentada la regla, y el texto sigue hablando de [data-accent].
+  const comentado = '/* antes esto iba aqui: ' + RECALCULO_ACENTO + ' */';
+  const r = run(informe({ css: MAPA_ACCENTO + comentado }));
+  assert.match(r.warningsList.join('\n'), /C15/);
 });
 
 test('regresión: los tres informes de referencia pasan --strict con código 0', (t) => {

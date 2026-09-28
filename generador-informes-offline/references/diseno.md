@@ -57,10 +57,133 @@ Cómo elegir:
   (`4, 12, 20`) se usan solo dentro de componentes cerrados (padding de celda,
   hueco entre icono y texto), nunca entre bloques.
 - **Ritmo de página**: secciones separadas 48px; contenido dentro de tarjetas 24px.
+- **Tokens derivados**: además de los tokens de la paleta, el skeleton
+  deriva algunos para que cambiar de paleta recoloree todo lo demás sin tocar
+  una línea:
+
+  | Token | De dónde sale |
+  |---|---|
+  | `--footer-bg` / `--footer-text` / `--footer-muted` / `--footer-accent` | `--primary` y `--surface` |
+  | `--zebra` | `--text` al 3 % sobre `--surface` (franja alterna de tabla) |
+  | `--head-bg` | `--primary` al 6 % sobre `--surface` (fondo de encabezado) |
+  | `--accent` | `--primary` por defecto; `[data-accent="N"]` lo remapea |
+  | `--accent-line` / `--accent-text` / `--accent-ink` | `--accent` mezclado con `--text` al 30 % / 50 % / 68 % |
+
+  Ninguno lleva hex propio: todos son `color-mix()`. Por eso el check **C14**
+  puede bloquear un color literal en el CSS sin bloquear la paleta.
 - **Alto del topbar**: `--topbar-h` (72px por defecto). Compensa el scroll
   sticky: `html{scroll-padding-top:var(--topbar-h)}` y
   `main[id],section[id]{scroll-margin-top:8px}`. Los dos se **suman**, así que si
   cambias el alto del topbar cambia solo el token, nunca los dos números.
+
+## Color por sección (`data-accent`)
+
+El acento vive en un **atributo**, no en un hex local. Se marca el contenedor y
+el color se decide en un sitio:
+
+```html
+<section id="s1" data-accent="2"> ... </section>
+```
+
+`[data-accent="1".."7"]` remapean `--accent` a `--chart-1..7`, así que el
+color se lee de la paleta como cualquier otro token.
+
+### El alcance trampa de `var()`: recalcular los tres derivados
+
+Una custom property sustituye sus `var()` **en el elemento donde se declara**,
+no en el elemento donde se usa. `--accent-text: color-mix(…, var(--accent))`
+escrita en `:root` se resuelve **una sola vez**, contra el `--primary` de
+`:root`, y ese color concreto hereda a toda la página. Remapear `--accent` en
+`[data-accent="3"]` no cambia nada de lo que ya se calculó.
+
+Por eso el mapa es **doble**, y vive entero en el mismo elemento:
+
+```css
+[data-accent="3"]{--accent:var(--chart-3)}
+[data-accent]{
+  --accent-line:  color-mix(in srgb, var(--text) 30%, var(--accent));
+  --accent-text:  color-mix(in srgb, var(--text) 50%, var(--accent));
+  --accent-ink:   color-mix(in srgb, var(--text) 68%, var(--accent));
+}
+```
+
+El fallo no se ve: el **fondo** del badge sí cambia de sección, porque su
+`color-mix(in srgb, var(--accent) 12%, …)` se evalúa en el propio elemento, y
+el texto no. El resultado parece un descuido de estilo —badge verde con texto
+azul— en vez de un error de alcance, que es lo que es.
+
+El check **C15** lo vigila de forma estructural: si algún selector
+`[data-accent…]` remapea `--accent`, exige que otro `[data-accent…]` declare
+los tres derivados y nombra los que falten.
+
+### Dónde se aplica: solo la CROMA del encabezado
+
+- **Sí**: el filete vertical de 3 px a la izquierda (`.h2wrap::before`), la
+  línea bajo el `h2` (`.h2wrap h2::after`) y el color del badge.
+- **No**: los colores de los datos. Remapear `--chart-*` rompería "mismo color =
+  misma serie" en cuanto el lector comparara dos gráficas.
+- **No**: bandas de fondo ni tarjetas teñidas. Un tinte por sección convierte un
+  informe largo en un carnival y compite con las gráficas.
+
+Es un cambio **sutil a propósito**: filete y línea cambian de tono, el texto y
+los fondos se quedan quietos.
+
+### El matiz que hay que respetar: tres mezclas, tres umbrales
+
+El color puro de la serie **no llega a ningún umbral**, ni al 4.5:1 del texto ni
+al 3:1 de los elementos no textuales. Medido sobre la superficie tintada de
+`ejecutivo`, el ámbar da **2.15:1**, el verde **2.54:1** y el teal **2.49:1**.
+No es un matiz: es una serie que no se puede leer.
+
+Por eso el acento nunca se usa tal cual, y hay **tres** tokens, cada uno con su
+umbral y su cuota **medida** (el mínimo está en el 26 % para 3:1 y en el 47 %
+para 4.5:1; se usa un margen por encima en los dos casos):
+
+| Uso | Umbral | Token | Por qué |
+|---|---|---|---|
+| Filete, línea de acento, borde de tabla, borde de bloque, icono del `h2` | 3:1 | `--accent-line` = `color-mix(in srgb, var(--text) 30%, var(--accent))` | Es cromo, no texto: 3:1 basta |
+| Texto del eyebrow, texto de badge | 4.5:1 | `--accent-text` = `color-mix(in srgb, var(--text) 50%, var(--accent))` | Es texto: le exige 4.5:1 |
+| Cifras grandes de KPI | 4.5:1 | `--accent-ink` = `color-mix(in srgb, var(--text) 68%, var(--accent))` | Es texto grande, pero el tono aún tiene que leerse |
+
+El color puro queda solo para el **fondo** del badge, y ahí ya es un tinte del
+12 %, no un plano de color: `color-mix(in srgb, var(--accent) 12%, var(--surface))`.
+
+El check **C1** mide las tres cuotas contra las superficies donde el texto se
+pinta de verdad (la base **y** la tintada), y avisa si alguna serie no llega. Es
+la parte que no se puede fiar de la intuición: bajar la cuota de 50 % a 38 % no
+rompe nada visible hasta que el informe va impreso, y por eso lo comprueba el
+validador y no el ojo.
+
+> **Lo que el check no sabe leer.** Solo entiende
+> `color-mix(in srgb, var(--text) N%, …)`. Si escribes la mezcla en `oklab`, o
+> con el acento primero, o con decimales (`50.0%`), se calla en vez de medir:
+> no es que pase, es que no lo ha mirado. La razón es que el promedio sRGB de
+> una mezcla oklab no es el color que pinta el motor, y publicar esa medida sería
+> peor que no publicar ninguna.
+
+### Eligiendo la rampa
+
+No todos los tonos de la paleta son neutros en significado. Verde y ámbar
+comunican "bien" y "aviso", así que usarlos para colorear secciones sugiere un
+juicio que los datos no hacen. Para una rampa de secciones, usa tonos **neutros**
+(azul, violeta, teal, pizarra) y deja que los secciones de marco se queden con
+`--primary`. Repetir tonos cada 3 o 4 secciones es correcto: significa "estas
+secciones comparten identidad", no que falten colores.
+
+### Cuándo poner un `.eyebrow`
+
+```html
+<div class="h2wrap">
+  <div class="eyebrow">Bloque A</div>
+  <h2>Naturaleza de los artículos científicos</h2>
+</div>
+```
+
+Mayúsculas, `letter-spacing: .14em`, `--accent-text`, tamaño `.72rem`. Es
+una **etiqueta de contexto**, no un título: escribe solo lo que el informe ya
+afirma en otra parte. Si la sección ya lleva su categoría en un badge o en el
+propio texto del `h2`, **no añadas el eyebrow**: sería repetir lo mismo con otro
+formato e inventarías la jerarquía. Es preferible omitirlo.
 
 ## Tipografía
 
@@ -152,8 +275,18 @@ Recursos que ya trae el skeleton para que los informes destaquen sin coste:
   ideal "Web operativa" / "Servicio activo".
 - **Mini-barras comparativas** (`.mbar`): rellenos `scaleX` con `--w` y color
   semántico `--bc`; cuentan en la jerarquía "tamaño → color → contraste".
+- **Estado de lectura**: la barra `.read-progress` (fija bajo el topbar, 2 px)
+  marca cuánto lleva recorrido, y el enlace activo del índice recibe
+  `aria-current="true"` (peso, color de marca y un subrayado lleno). Los dos
+  los pone `motion.min.js` **en runtime**, también con `prefers-reduced-motion`
+  y sin gate `html.js`, porque son navegación y no decoración. En print se
+  ocultan. En el esqueleto, `.read-progress` va justo antes de `<main>`.
+- **Filete de bloque** (`<i class="rule" data-rule>`): una línea de 3 px que
+  se dibuja en `scaleX` al entrar. Es un elemento real, no un `::after`,
+  porque los pseudo-elementos no pueden llevar atributos de animación.
 - **Subrayado animado del índice**: cada enlace del TOC gana una línea que se
   dibuja al hover (solo `transform`, guardado bajo `prefers-reduced-motion`).
+  La variante `aria-current="true"` es la misma línea, ya dibujada.
 - **Elevación en hover**: tarjetas `.hl`, `.recs li`, `.ring-item`, ítems de
   timeline suben 3px con sombra ampliada (transición de `var(--motion-duration)`).
 - **Modo oscuro opcional** (interactivo): poniendo `data-theme="dark"` en

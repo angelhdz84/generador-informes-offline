@@ -98,6 +98,12 @@ Resumen no negociable:
    ```bash
    node --test generador-informes-offline/scripts/validar-offline.test.mjs
    ```
+   Y **cada fixture nuevo, probado en negativo**: rompe a propósito la pieza
+   que debería cubrir y comprueba que algún fixture cae. Un check con fixtures
+   que nunca fallan no está verificado, por muchos que tenga. La mutación que
+   más se cuela es la que degrada el resultado en vez de romperlo: un check que
+   baja el umbral, o que se mide contra el fondo en vez de contra la superficie
+   tintada, sigue ejecutándose y sigue diciendo que todo va bien.
 
 ### Rutas: la skill es user-level, el proyecto no es su raíz
 
@@ -131,6 +137,39 @@ que fija ese número: si al retocar el skeleton la plantilla pasa a 0 warnings
 o a 5, el cambio no es lo que crees. El skeleton **no** debe pasar `--strict`
 por sí solo; los informes generados sí.
 
+## El acento: tres tokens y unas cuotas medidas
+
+El color de serie **nunca** se usa tal cual, ni como texto ni como cromo. En
+la paleta `ejecutivo`, medido sobre la superficie tintada, el ámbar da 2.15:1,
+el verde 2.54:1 y el teal 2.49:1: no llegan ni al 4.5:1 del texto ni al 3:1 de
+los elementos no textuales. De ahí los tres tokens, cada uno con su umbral y su
+cuota **medida** (el mínimo real es 26 % para 3:1 y 47 % para 4.5:1):
+
+| Token | Umbral | Uso |
+|---|---|---|
+| `--accent-line` (`--text` 30 %) | 3:1 | filete, línea, borde de bloque, de tabla |
+| `--accent-text` (`--text` 50 %) | 4.5:1 | texto del badge, del eyebrow |
+| `--accent-ink` (`--text` 68 %) | 4.5:1 | cifras grandes de KPI |
+
+El error que ya se cometió una vez: bajar `--accent-text` del 50 % al 38 % no
+rompe nada visible —nadie ve el hex, solo el token— y el badge de los bloques
+ámbar, verde y teal deja de leerse. C1 lo mide por eso, contra la superficie
+tintada y no solo contra el blanco. **No bajes las cuotas por estética.**
+
+### El alcance de `var()`: los derivados se recalculan, no heredan
+
+Una custom property sustituye sus `var()` **en el elemento donde se declara**.
+`--accent-text: color-mix(…, var(--accent))` escrita en `:root` se resuelve una
+vez contra el `--primary` de `:root` y ese color hereda a la página entera:
+remapear `--accent` en `[data-accent="3"]` no lo cambia. Por eso el mapa es
+**doble** y vive entero en el mismo elemento (ver `references/diseno.md`).
+
+El fallo no se ve: el fondo del badge sí cambia (su `color-mix` se evalúa en el
+propio elemento) y el texto no, así que parece un descuido de estilo. **C15** lo
+vigila: si algún selector `[data-accent…]` remapea `--accent`, tiene que existir
+otro `[data-accent…]` que declare los tres derivados; si no, avisa nombrando los
+que faltan.
+
 ## Estructura del repo
 
 ```
@@ -143,7 +182,7 @@ por sí solo; los informes generados sí.
 │   ├── assets/                # plantilla-base.html, motion.min.js, iconos.svg, paletas.json, alpine.min.js
 │   ├── references/            # diseno, svg-charts, infografias, movimiento, tipos-informe, accesibilidad-ux
 │   ├── scripts/
-│   │   ├── validar-offline.mjs      # validador (A1-A7, C1-C13, --strict, --json)
+│   │   ├── validar-offline.mjs      # validador (A1-A7, C1-C15, --strict, --json)
 │   │   ├── smoke.mjs                # prueba de instalación: rellena la plantilla y valida desde cualquier cwd
 │   │   └── validar-offline.test.mjs # fixtures unitarios del validador
 │   └── evals/                 # suite de evaluaciones

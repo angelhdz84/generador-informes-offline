@@ -32,6 +32,26 @@
   --chart-1:#1e3a8a; --chart-2:#3b82f6; --chart-3:#f59e0b; --chart-4:#10b981; --chart-5:#8b5cf6; --chart-6:#ef4444; --chart-7:#14b8a6;
   --radial:linear-gradient(135deg,#1e3a8a 0%,#2563eb 60%,#3b82f6 100%);
   --radius:10px; --radius-lg:16px;
+  /* Tokens derivados: sin hex propio, siguen al --primary de la paleta. Cambiar
+     de paleta recolorea footer, acentos y fondos de tabla sin tocar una linea. */
+  --footer-bg:color-mix(in srgb,var(--primary) 58%,#070b16);
+  --footer-text:color-mix(in srgb,var(--surface) 88%,var(--primary));
+  --footer-muted:color-mix(in srgb,var(--surface) 64%,var(--primary));
+  --footer-accent:color-mix(in srgb,var(--primary) 50%,var(--surface));
+  --zebra:color-mix(in srgb,var(--text) 3%,var(--surface));
+  --head-bg:color-mix(in srgb,var(--primary) 6%,var(--surface));
+  /* Acento de seccion: por defecto el --primary; [data-accent="N"] lo remapea a
+     un color de serie. El color de serie NO se usa tal cual en el cromo: medido
+     sobre la superficie tintada, el ambar da 2.15:1, el verde 2.54:1 y el teal
+     2.49:1, por debajo tanto del 4.5:1 que pide el texto como del 3:1 de los
+     elementos no textuales. Por eso hay tres mezclas con --text, y las cuotas
+     estan medidas, no estimadas: 30% deja el cromo en 3:1 o mas, 50% llega a
+     4.5:1 en las siete series de las dos paletas, y 68% es para el texto grande
+     (KPI), donde el tono todavia tiene que leerse. */
+  --accent:var(--primary);
+  --accent-line:color-mix(in srgb,var(--text) 30%,var(--accent));
+  --accent-text:color-mix(in srgb,var(--text) 50%,var(--accent));
+  --accent-ink:color-mix(in srgb,var(--text) 68%,var(--accent));
   --shadow:0 1px 3px rgba(15,23,42,.08),0 4px 12px rgba(15,23,42,.06);
   --shadow-lg:0 4px 16px rgba(15,23,42,.12),0 10px 32px rgba(15,23,42,.10);
   --motion-ease:cubic-bezier(0.23,1,0.32,1);
@@ -55,13 +75,32 @@ img{max-width:100%;height:auto}
 .logo img{width:100%;height:100%;object-fit:contain}
 .skip-link{position:fixed;top:8px;left:8px;z-index:1000;padding:10px 14px;border-radius:var(--radius);background:var(--surface);color:var(--primary);box-shadow:var(--shadow-lg);font-weight:700;text-decoration:none;transform:translateY(calc(-100% - 16px));transition:transform var(--motion-duration) var(--motion-ease)}
 .skip-link:focus-visible{transform:translateY(0)}
-h2{font-size:1.5rem;font-weight:700;display:flex;align-items:center;gap:10px}
-h2 .icon{color:var(--primary)}
-.h2wrap{margin-bottom:22px}
-.h2wrap h2::after{content:"";display:block;height:3px;width:56px;background:var(--primary);border-radius:2px;margin-top:8px}
-h3{font-size:1.125rem;font-weight:600;margin-bottom:6px}
+h2{font-size:1.5rem;font-weight:700;line-height:1.15;letter-spacing:-.015em;display:flex;align-items:center;gap:10px}
+h2 .icon{color:var(--accent-line)}
+/* Color por bloque tematico: [data-accent="N"] apunta a un color de serie.
+   Solo tiñe la CROMA de la seccion (filete, linea, eyebrow, icono). Nunca los
+   colores de los datos: "mismo color = misma serie" debe seguir valiendo. */
+[data-accent="1"]{--accent:var(--chart-1)}[data-accent="2"]{--accent:var(--chart-2)}
+[data-accent="3"]{--accent:var(--chart-3)}[data-accent="4"]{--accent:var(--chart-4)}
+[data-accent="5"]{--accent:var(--chart-5)}[data-accent="6"]{--accent:var(--chart-6)}
+[data-accent="7"]{--accent:var(--chart-7)}
+/* Los tres derivados del acento tienen que RECALCULARSE aqui, en el mismo elemento que
+   remapea --accent, y no solo en :root. Una custom property sustituye sus var()
+   en el elemento donde se declara: si --accent-text viviera unicamente en
+   :root, alli se resolveria contra el --primary y ese color concreto heredaria
+   a toda la pagina, de modo que los badges de todas las secciones saldrian del
+   mismo azul. Aqui --accent ya vale el color de la serie, asi que la mezcla sale
+   de la paleta y no de la herencia. */
+[data-accent]{--accent-line:color-mix(in srgb,var(--text) 30%,var(--accent));--accent-text:color-mix(in srgb,var(--text) 50%,var(--accent));--accent-ink:color-mix(in srgb,var(--text) 68%,var(--accent))}
+.h2wrap{position:relative;margin-bottom:22px;padding-left:16px}
+.h2wrap::before{content:"";position:absolute;left:0;top:3px;bottom:3px;width:3px;border-radius:2px;background:var(--accent-line)}
+.h2wrap h2::after{content:"";display:block;height:3px;width:56px;background:var(--accent-line);border-radius:2px;margin-top:8px}
+.eyebrow{font-size:.72rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-text);margin-bottom:8px}
+/* Filete divisorio real (no pseudo): admite data-rule para dibujarse al entrar */
+.rule{display:block;height:3px;width:56px;border-radius:2px;background:var(--accent-line);margin:12px 0 0;transform-origin:left center}
+h3{font-size:1.125rem;font-weight:600;letter-spacing:-.01em;margin-bottom:6px}
 section{margin-bottom:48px}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px;transition:transform var(--motion-duration) var(--motion-ease),box-shadow var(--motion-duration) var(--motion-ease),border-color var(--motion-duration) var(--motion-ease)}
 .muted{color:var(--muted)}
 .small{font-size:.875rem;color:var(--muted)}
 /* ===== Topbar ===== */
@@ -89,7 +128,7 @@ section{margin-bottom:48px}
 .toc ol{list-style:none;counter-reset:toc;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:6px 24px}
 .toc li{counter-increment:toc}
 .toc a{display:flex;gap:10px;align-items:baseline;padding:5px 8px;border-radius:6px;color:var(--text);text-decoration:none;font-size:.95rem}
-.toc a:hover{background:#f1f5f9;color:var(--primary)}
+.toc a:hover{background:var(--head-bg);color:var(--primary)}
 .toc a::before{content:counter(toc);font-weight:700;color:var(--primary);font-variant-numeric:tabular-nums}
 /* ===== Panel "Lo más importante" ===== */
 .hl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
@@ -99,11 +138,11 @@ section{margin-bottom:48px}
 .hl p{font-size:.95rem} .hl p strong{color:var(--text)}
 /* ===== KPIs ===== */
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
-.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 20px 10px;display:flex;flex-direction:column;gap:6px;transition:transform var(--motion-duration) var(--motion-ease),box-shadow var(--motion-duration) var(--motion-ease)}
-html.js:not(.no-anim) .kpi:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 20px 10px;display:flex;flex-direction:column;gap:6px;transition:transform var(--motion-duration) var(--motion-ease),box-shadow var(--motion-duration) var(--motion-ease),border-color var(--motion-duration) var(--motion-ease)}
+html.js:not(.no-anim) .kpi:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);border-color:color-mix(in srgb,var(--accent-line) 40%,var(--border))}
 .kpi-head{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.85rem;font-weight:600}
 .kpi-head .icon{width:1em;height:1em;color:var(--primary)}
-.kpi-value{font-size:1.9rem;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--text)}
+.kpi-value{font-size:1.9rem;font-weight:800;line-height:1.1;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--text)}
 .kpi-value small{font-size:1rem;font-weight:600;color:var(--muted)}
 .kpi-delta{font-size:.85rem;font-weight:600;font-variant-numeric:tabular-nums}
 .kpi-delta.up{color:var(--success)} .kpi-delta.down{color:var(--danger)} .kpi-delta.flat{color:var(--muted)} .kpi-delta.down.good{color:var(--success)}
@@ -136,31 +175,33 @@ html.js:not(.no-anim) .kpi:hover{transform:translateY(-3px);box-shadow:var(--sha
 /* ===== Callouts ===== */
 .callout{display:flex;gap:12px;align-items:flex-start;border-radius:8px;padding:16px 18px;margin-top:20px;font-size:.95rem;border-left:4px solid}
 .callout .icon{flex:0 0 auto;margin-top:2px}
-.callout.info{background:color-mix(in srgb,var(--primary) 9%,#ffffff);border-color:var(--primary)} .callout.info .icon{color:var(--primary)} .callout.info strong{color:var(--primary)}
-.callout.success{background:color-mix(in srgb,var(--success) 9%,#ffffff);border-color:var(--success)} .callout.success .icon{color:var(--success)} .callout.success strong{color:var(--success)}
-.callout.warning{background:color-mix(in srgb,var(--warning) 9%,#ffffff);border-color:var(--warning)} .callout.warning .icon{color:var(--warning)} .callout.warning strong{color:var(--warning)}
-.callout.danger{background:color-mix(in srgb,var(--danger) 9%,#ffffff);border-color:var(--danger)} .callout.danger .icon{color:var(--danger)} .callout.danger strong{color:var(--danger)}
+.callout.info{background:color-mix(in srgb,var(--primary) 9%,var(--surface));border-color:var(--primary)} .callout.info .icon{color:var(--primary)} .callout.info strong{color:var(--primary)}
+.callout.success{background:color-mix(in srgb,var(--success) 9%,var(--surface));border-color:var(--success)} .callout.success .icon{color:var(--success)} .callout.success strong{color:var(--success)}
+.callout.warning{background:color-mix(in srgb,var(--warning) 9%,var(--surface));border-color:var(--warning)} .callout.warning .icon{color:var(--warning)} .callout.warning strong{color:var(--warning)}
+.callout.danger{background:color-mix(in srgb,var(--danger) 9%,var(--surface));border-color:var(--danger)} .callout.danger .icon{color:var(--danger)} .callout.danger strong{color:var(--danger)}
 /* ===== Tablas ===== */
 .table-wrap{overflow-x:auto}
 table.table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:.92rem;margin-top:12px}
-table.table caption{caption-side:top;text-align:left;font-weight:600;padding:8px 0;color:var(--muted);font-size:.875rem}
-table.table th,table.table td{padding:10px 12px;border:1px solid var(--border);text-align:right}
-table.table th{background:#f1f5f9;font-weight:700;text-align:right;white-space:nowrap}
+table.table caption{caption-side:top;text-align:left;font-weight:600;padding:10px 0 4px;color:var(--muted);font-size:.875rem}
+table.table th,table.table td{padding:13px 12px;border-bottom:1px solid var(--border);text-align:right}
+table.table th{font-weight:700;text-align:right;white-space:nowrap}
+table.table thead th{border-bottom:2px solid color-mix(in srgb,var(--accent-line) 55%,var(--border));color:var(--muted);font-size:.78rem;letter-spacing:.06em;text-transform:uppercase}
 table.table th:first-child,table.table td:first-child{text-align:left}
-table.table tbody tr:nth-child(even){background:#fafbfc}
-table.table tbody tr:hover{background:#f1f5f9}
-table.table tfoot td{font-weight:700;background:#f1f5f9}
+table.table tbody tr:nth-child(even){background:var(--zebra)}
+table.table tbody tr:hover{background:var(--head-bg)}
+table.table tbody tr:last-child td{border-bottom:1px solid var(--border)}
+table.table tfoot td{font-weight:700;border-top:2px solid var(--border);border-bottom:none}
 table.table .tot{color:var(--primary);font-weight:700}
 /* Barras in-cell */
 .cell-bar{position:relative}
 .cell-bar::before{content:"";position:absolute;left:6px;right:6px;bottom:2px;height:3px;border-radius:2px;background:var(--border)}
 .cell-bar::after{content:"";position:absolute;left:6px;bottom:2px;height:3px;border-radius:2px;background:var(--bc,var(--primary));width:calc(var(--w,0)*1%)}
 .badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:.78rem;font-weight:700}
-.badge.success{background:#dcfce7;color:#15803d}
-.badge.warning{background:#fef3c7;color:#b45309}
-.badge.danger{background:#fee2e2;color:#b91c1c}
-.badge.primary{background:#dbeafe;color:#1e40af}
-.badge.muted{background:#f1f5f9;color:#475569}
+.badge.success{background:color-mix(in srgb,var(--success) 14%,var(--surface));color:color-mix(in srgb,var(--success) 72%,var(--text))}
+.badge.warning{background:color-mix(in srgb,var(--warning) 18%,var(--surface));color:color-mix(in srgb,var(--warning) 70%,var(--text))}
+.badge.danger{background:color-mix(in srgb,var(--danger) 13%,var(--surface));color:color-mix(in srgb,var(--danger) 72%,var(--text))}
+.badge.primary{background:color-mix(in srgb,var(--accent) 12%,var(--surface));color:var(--accent-text)}
+.badge.muted{background:var(--head-bg);color:color-mix(in srgb,var(--muted) 78%,var(--text))}
 /* ===== Recomendaciones ===== */
 .recs{list-style:none;display:flex;flex-direction:column;gap:14px}
 .recs li{display:flex;gap:14px;align-items:flex-start;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px}
@@ -169,7 +210,7 @@ table.table .tot{color:var(--primary);font-weight:700}
 .recs li p strong{color:var(--text)}
 /* ===== Stat block ===== */
 .stat{text-align:center;padding:28px 20px}
-.stat .stat-value{font-size:2.6rem;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums;color:var(--primary)}
+.stat .stat-value{font-size:2.6rem;font-weight:800;line-height:1.05;letter-spacing:-.025em;font-variant-numeric:tabular-nums;color:var(--accent-ink)}
 .stat .stat-label{font-size:.9rem;color:var(--muted);margin-top:6px;font-weight:600}
 .stat .stat-ctx{font-size:.82rem;color:var(--muted);margin-top:4px}
 /* ===== Pasos / proceso ===== */
@@ -191,7 +232,7 @@ ol.steps p{font-size:.88rem;color:var(--muted)}
 .notes{font-size:.9rem;color:var(--muted)}
 .notes li{margin:4px 0 4px 18px}
 /* ===== Footer ===== */
-footer{background:#0f1f4b;color:#cbd5e1;margin-top:48px;padding:32px 0 0}
+footer{background:var(--footer-bg);color:var(--footer-text);margin-top:48px;padding:32px 0 0}
 footer .container{padding-top:0;padding-bottom:0}
 .foot-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:28px;padding-bottom:28px}
 .foot-brand{display:flex;align-items:center;gap:12px;margin-bottom:12px}
@@ -199,8 +240,8 @@ footer .container{padding-top:0;padding-bottom:0}
 .foot-brand strong{color:#fff;font-size:1.05rem}
 footer h4{color:#fff;font-size:.85rem;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
 footer .contact-item{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:.9rem}
-footer .contact-item .icon{color:#93c5fd}
-.foot-bottom{border-top:1px solid rgba(255,255,255,.15);padding:16px 0 20px;font-size:.82rem;color:#93a4c4;display:flex;flex-wrap:wrap;gap:8px 24px;justify-content:space-between}
+footer .contact-item .icon{color:var(--footer-accent)}
+.foot-bottom{border-top:1px solid rgba(255,255,255,.15);padding:16px 0 20px;font-size:.82rem;color:var(--footer-muted);display:flex;flex-wrap:wrap;gap:8px 24px;justify-content:space-between}
 /* ===== Decoración y micro-interacciones ===== */
 /* Barras horizontales .mbar (comparativas, avance por ítem) */
 .mbar{display:flex;align-items:center;gap:10px;font-size:.88rem;margin:9px 0}
@@ -214,19 +255,31 @@ footer .contact-item .icon{color:#93c5fd}
 .spark .sp-last{fill:var(--secondary);stroke:var(--surface);stroke-width:1.5}
 /* Sello de estado con punto pulsante */
 .status-dot{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:.85rem;padding:6px 14px;border-radius:999px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);color:#fff}
-.status-dot i{width:9px;height:9px;border-radius:50%;background:#34d399;box-shadow:0 0 0 0 rgba(52,211,153,.55)}
-.status-dot.on-light{background:#ecfdf5;border-color:#d1fae5;color:#047857}
-.status-dot.on-light i{background:#10b981}
+.status-dot i{width:9px;height:9px;border-radius:50%;background:var(--success);box-shadow:0 0 0 0 color-mix(in srgb,var(--success) 55%,transparent)}
+.status-dot.on-light{background:color-mix(in srgb,var(--success) 12%,var(--surface));border-color:color-mix(in srgb,var(--success) 28%,var(--surface));color:color-mix(in srgb,var(--success) 72%,var(--text))}
+.status-dot.on-light i{background:var(--success)}
+/* Barra de progreso de lectura: 2px bajo el topbar, escala con el scroll.
+   Decorativa (aria-hidden): la información real la da el índice con aria-current.
+   Sin transition a propósito — con ella la barra iría por detrás del scroll. */
+.read-progress{position:fixed;top:var(--topbar-h);left:0;right:0;height:2px;z-index:21;pointer-events:none}
+.read-progress i{display:block;height:100%;background:var(--primary);transform:scaleX(var(--p,0));transform-origin:left center}
 /* Patrón decorativo del hero (SVG inline, opcional) */
 .hero-pattern{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
 .hero-pattern ~ *{position:relative;z-index:1}
 /* Subrayado animado del índice */
 .toc a{position:relative}
+/* Sección en la que estás: la fija motion.min.js con aria-current. Se declara
+   SIN gate a propósito: marcar dónde estás es información, no decoración, y
+   debe verse igual con reduced-motion y sin JS (este último con el primer ítem). */
+.toc a[aria-current="true"]{color:var(--primary);font-weight:700;background:var(--head-bg)}
+.toc a[aria-current="true"]::after{opacity:1;transform:scaleX(1)}
 .toc a::after{content:"";position:absolute;left:8px;right:8px;bottom:1px;height:2px;border-radius:1px;background:var(--secondary);opacity:0;transform:scaleX(.01);transform-origin:left center;transition:opacity var(--motion-duration) var(--motion-ease),transform var(--motion-duration) var(--motion-ease)}
 html.js:not(.no-anim) .toc a:hover::after,html.js:not(.no-anim) .toc a:focus-visible::after{opacity:1;transform:scaleX(1)}
 /* Elevación sutil en hover (micro-interacción) */
-.hl,.recs li,.ring-item,.timeline .tl-item{transition:transform var(--motion-duration) var(--motion-ease),box-shadow var(--motion-duration) var(--motion-ease)}
-html.js:not(.no-anim) .hl:hover,html.js:not(.no-anim) .recs li:hover,html.js:not(.no-anim) .ring-item:hover,html.js:not(.no-anim) .timeline .tl-item:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+.hl,.recs li,.ring-item,.timeline .tl-item{transition:transform var(--motion-duration) var(--motion-ease),box-shadow var(--motion-duration) var(--motion-ease),border-color var(--motion-duration) var(--motion-ease)}
+/* El borde también se tiñe: el cambio de color es lo que hace que una tarjeta
+   parezca viva sin nada que se mueva de más. */
+html.js:not(.no-anim) .card:hover,html.js:not(.no-anim) .hl:hover,html.js:not(.no-anim) .recs li:hover,html.js:not(.no-anim) .ring-item:hover,html.js:not(.no-anim) .timeline .tl-item:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);border-color:color-mix(in srgb,var(--accent-line) 40%,var(--border))}
 /* Modo oscuro (opcional · interactivo: <html data-theme="dark">) */
 [data-theme="dark"]{color-scheme:dark;--bg:#0f172a;--surface:#1e293b;--border:#334155;--text:#e2e8f0;--muted:#94a3b8;
   --primary:#60a5fa;--primary-soft:#93c5fd;--secondary:#fbbf24;--success:#34d399;--warning:#fbbf24;--danger:#f87171;
@@ -234,7 +287,7 @@ html.js:not(.no-anim) .hl:hover,html.js:not(.no-anim) .recs li:hover,html.js:not
   --shadow:0 1px 3px rgba(0,0,0,.4),0 4px 12px rgba(0,0,0,.3);
   --shadow-lg:0 4px 16px rgba(0,0,0,.5),0 10px 32px rgba(0,0,0,.4)}
 [data-theme="dark"] .topbar{background:rgba(15,23,42,.92)}
-[data-theme="dark"] footer{background:#020617}
+[data-theme="dark"] footer{background:var(--footer-bg)}
 /* ===== Toques premium ===== */
 /* Tooltip simple (hover/focus; oculto en print) */
 .tip-zone{position:relative}
@@ -285,11 +338,21 @@ html.js:not(.no-anim) [data-pop]{transform:scale(.88);transform-box:fill-box;tra
 html.js:not(.no-anim) [data-pop].in{transform:scale(1)}
 html.js:not(.no-anim) [data-water]{opacity:0;transition:opacity var(--motion-duration) var(--motion-ease) var(--motion-delay)}
 html.js:not(.no-anim) [data-water].in{opacity:var(--wo,.45)}
+/* Momento focal de portada: 700ms, una sola vez. Es la unica duracion larga
+   ademas de data-draw, y va gateada como todo lo demas. Encadena con --d
+   (marca → titulo → subtitulo → meta) para que la portada se sienta compuesta
+   en vez de aparecer de golpe. */
+html.js:not(.no-anim) [data-hero]{opacity:0;transform:translateY(14px);transition:opacity 700ms var(--motion-ease),transform 700ms var(--motion-ease);transition-delay:min(var(--d,0ms),320ms)}
+html.js:not(.no-anim) [data-hero].in{opacity:1;transform:none}
+/* Filete divisorio que se dibuja al entrar. scaleX(.01) y no scaleX(0): la
+   escala singular rompe la reversibilidad y produce CLS. */
+html.js:not(.no-anim) [data-rule]{transform:scaleX(.01);transition:transform 320ms var(--motion-ease);transition-delay:min(var(--d,0ms),var(--motion-delay))}
+html.js:not(.no-anim) [data-rule].in{transform:scaleX(1)}
 html.js:not(.no-anim) .status-dot i{animation:dotPulse var(--motion-duration) var(--motion-ease) 1 both}
 @keyframes dotPulse{0%{box-shadow:0 0 0 0 rgba(16,185,129,.55)}70%{box-shadow:0 0 0 9px rgba(16,185,129,0)}100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
-  html.js [data-reveal],html.js [data-slide],html.js [data-grow],html.js [data-pop]{opacity:1!important;transform:none!important}
+  html.js [data-reveal],html.js [data-slide],html.js [data-grow],html.js [data-pop],html.js [data-hero],html.js [data-rule]{opacity:1!important;transform:none!important}
   html.js .mbar .fill[data-grow]{transform:scaleX(1)!important}
   html.js [data-draw]{stroke-dashoffset:0!important}
   html.js [data-water],html.js [data-water].in{opacity:var(--wo,.45)}
@@ -298,14 +361,14 @@ html.js:not(.no-anim) .status-dot i{animation:dotPulse var(--motion-duration) va
 /* ===== Print ===== */
 @media print{
   @page{size:A4;margin:14mm}
-  html.js [data-reveal],html.js [data-slide],html.js [data-grow],html.js [data-pop]{opacity:1!important;transform:none!important}
+  html.js [data-reveal],html.js [data-slide],html.js [data-grow],html.js [data-pop],html.js [data-hero],html.js [data-rule]{opacity:1!important;transform:none!important}
   html.js .mbar .fill[data-grow]{transform:scaleX(1)!important}
   html.js [data-draw]{stroke-dashoffset:0!important}
   html.js [data-water],html.js [data-water].in{opacity:var(--wo,.45)!important}
-  .topbar{display:none}
+  .topbar,.read-progress{display:none}
   .skip-link{display:none!important}
   .hero{border-radius:0;box-shadow:none}
-  .card,.kpi,.hl,.toc,.recs li,.ring-item{box-shadow:none;border:1px solid #e5e7eb}
+  .card,.kpi,.hl,.toc,.recs li,.ring-item{box-shadow:none;border:1px solid var(--border)}
   section{break-inside:avoid}
   .kpi,.chart-box,.hl{break-inside:avoid}
   h2{break-after:avoid}
@@ -334,6 +397,10 @@ html.js:not(.no-anim) .status-dot i{animation:dotPulse var(--motion-duration) va
 
 <!-- ===== Topbar (pega aquí el bloque del topbar) ===== -->
 {{TOPBAR}}
+
+<!-- Barra de progreso de lectura. Decorativa: aria-hidden, sin tabindex.
+     motion.min.js la actualiza solo si existe; sin JS se queda a 0 (invisible). -->
+<div class="read-progress" aria-hidden="true"><i></i></div>
 
 <main id="contenido" class="container" tabindex="-1">
   <!-- ===== Contenido (pega aquí el cuerpo del informe) =====

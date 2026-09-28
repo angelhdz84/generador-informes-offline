@@ -85,6 +85,62 @@ El skeleton expone tres tokens en `:root`; úsalos en lugar de valores sueltos:
 | `data-pop` | escala suave (0.88 → 1) | donut/pie, progress ring (grupos), nodos de timeline |
 | `data-count` | cuenta de 0 al valor (240 ms, tope 280 ms) | valores KPI, stat blocks |
 | `data-water` | fundido de fondo decorativo | patrón SVG del hero, marca de agua discreta |
+| `data-hero` | fade + subida 14px, **700 ms, una sola vez** | cadena de portada (marca, h1, subtítulo, meta) |
+| `data-rule` | se dibuja en `scaleX` (320 ms) | filete `<i class="rule" data-rule>` de cierre de bloque |
+
+## Momento focal: `data-hero` y `data-rule`
+
+Son los dos atributos que cierran la promesa de "momento focal único" de la
+tabla de duraciones. Antes de existirlos, la portada no tenia ningun movimiento
+propio: se revelaba con el mismo `data-reveal` de 240 ms que una tarjeta, y el
+filete de sección aparecía de golpe.
+
+### `data-hero` (700 ms, portada)
+
+Se encadena con `--d` a mano. El tope del stagger (80 ms por hijo) se queda
+corto para una portada de cuatro elementos, así que aquí los retardos se
+escriben:
+
+```html
+<section class="hero">
+  <div class="hero-brand" data-hero style="--d:60ms">...</div>
+  <h1 data-hero style="--d:0ms">Informe de Requerimientos Técnicos</h1>
+  <p class="subtitle" data-hero style="--d:150ms">...</p>
+  <div class="meta" data-hero style="--d:240ms">...</div>
+</section>
+```
+
+- **Una sola vez, al cargar.** No es un reveal por scroll: si lo grupos con
+  `data-stagger`, el retardo acumulado se come el efecto.
+- Quita `data-reveal` del `<section class="hero">` si lo tenia: si no, el
+  contenedor y sus hijos se mueven a la vez y se nota el solape.
+- El `transition-delay` se limita a `min(var(--d,0ms),320ms)` para que un
+  retardo a mano no pueda dejar un elemento esperando medio segundo.
+- Si el informe **no** lleva portada animada, no pongas `data-hero`: es
+  decoration, no informacion.
+
+### `data-rule` (320 ms, filete)
+
+Un filete real, no un pseudo-elemento: `.h2wrap h2::after` no puede llevar
+atributos, asi que cuando quieras que la linea se dibuje, es un elemento.
+
+```html
+<i class="rule" data-rule></i>
+```
+
+- Arranca en `scaleX(.01)`, **nunca en `scaleX(0)`**: la escala singular no se
+  puede deshacer y provoca CLS. El validador (C6) avisa de `scale(0)` en
+  entradas.
+- Con `prefers-reduced-motion` y en print queda en `scaleX(1)` sin más.
+
+### Lo que NO depende de la animación
+
+La barra de progreso de lectura y la entrada activa del índice
+(`.read-progress`, `aria-current`) son **navegación**, no decoración: las
+gestiona `motion.min.js` **antes** del corte de `prefers-reduced-motion`, así
+que funcionan igual con movimiento reducido. No se animan con `data-*`, no las
+gobla el gate `html.js` y no desaparecen al imprimir. El estado activo lo
+escribe el runtime, por eso no hay un check que lo exija en el HTML.
 
 ## Variante `data-slide`
 
@@ -193,7 +249,13 @@ el tooltip no es una animación sino contenido, así que también se muestra con
   bien; usa opacidad + transform.
 - No más de un `data-count` en el mismo contenedor si compiten por el stagger
   visual: dales `--d` escalonado con `data-stagger` en el padre.
-- No `scale(0)` como estado inicial: usa `scale(.2)` o solo opacidad.
+- No `scale(0)` como estado inicial: usa `scale(.2)`, `scaleX(.01)` o solo opacidad.
+- No `data-hero` en toda la portada a la vez con `data-stagger`: el retardo
+  acumulado anula el momento focal. Encadena con `--d` a mano.
+- No pongas `data-rule` a una línea de texto ni a un elemento con `width:100%`
+  padding: el `scaleX` se ve elástico. Es para filetes de ancho fijo.
+- No esperes a que `data-hero` o `data-rule` aparezcan para la primera
+  pantalla útil: la portada debe ser legible sin ninguna animación.
 - No `transition: all`: nombra las propiedades (`opacity`, `transform`, ...).
 - No revelar cada bloque con un `data-reveal` por sección: elige un momento
   focal y deja el resto estático.

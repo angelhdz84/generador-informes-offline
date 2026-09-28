@@ -203,6 +203,57 @@ if (rootMatch) {
   const cMutedSurface = ratio(muted, surface);
   if (cMutedSurface != null && cMutedSurface < 4.5) warnMsg(`Contraste --muted/--surface ${cMutedSurface.toFixed(2)}:1 < 4.5 (AA para texto normal).`);
   else if (cMutedSurface != null) okMsg(`Contraste --muted/--surface ${cMutedSurface.toFixed(2)}:1 (≥4.5 AA).`);
+  // ---- Tokens de acento: el contraste tambien se mide, no se estima --------
+  //
+  // El color de serie puro no sirve ni para texto ni para cromo: medido sobre la
+  // superficie tintada, el ambar da 2.15:1 y el verde 2.54:1, por debajo tanto
+  // del 4.5:1 que pide el texto como del 3:1 de los elementos no textuales. Por
+  // eso el skeleton los mezcla con --text. Lo que se comprueba aqui es que esas
+  // mezclas siguen cumpliendo, no que el hex sea bonito.
+  const aHex = (c) => (typeof c === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(c.trim()) ? c.trim() : null);
+  const aBytes = (c) => {
+    const s = c.replace('#', '');
+    const f = s.length === 3 ? s.split('').map((x) => x + x).join('') : s;
+    return [0, 2, 4].map((i) => parseInt(f.slice(i, i + 2), 16));
+  };
+  // color-mix(in srgb, A p%, B) se promedia en espacio sRGB, que es lo que hace
+  // el motor. Sin esto la cuota se leeria como un numero y no como un color.
+  const aMix = (cuota, a, b) => {
+    const A = aHex(a), B = aHex(b);
+    if (!A || !B) return null;
+    const [pa, pb] = [aBytes(A), aBytes(B)];
+    return '#' + pa.map((v, i) => Math.round(v * cuota + pb[i] * (1 - cuota)).toString(16).padStart(2, '0')).join('');
+  };
+  // Las superficies donde se pinta texto de acento: la base y las dos tintadas.
+  const aFondo = (a) => {
+    const out = [];
+    for (const c of [aHex(surface), aHex(bg), aMix(0.06, get('primary'), surface), aMix(0.03, text, surface)]) {
+      if (c && !out.includes(c)) out.push(c);
+    }
+    return out;
+  };
+  const fondos = aFondo();
+  const acentoOk = (token, minimo, para) => {
+    const def = get(token);
+    const cuota = def && def.match(/color-mix\(in srgb,\s*var\(--text\)\s*(\d+)%/);
+    if (!cuota) return;
+    const p = Number(cuota[1]) / 100;
+    const malos = [];
+    let medidas = 0;
+    for (let n = 1; n <= 7; n++) {
+      const c = aMix(p, text, get('chart-' + n));
+      if (!c) continue;
+      medidas++;
+      const peor = Math.min(...fondos.map((f) => ratio(c, f)).filter((v) => v != null));
+      if (peor != null && peor < minimo) malos.push(`chart-${n} ${peor.toFixed(2)}:1`);
+    }
+    if (!medidas) return;
+    if (malos.length) warnMsg(`--${token} (${Math.round(p * 100)}% de --text) queda en ${malos.length} serie(s) por debajo de ${minimo}:1, y lo usa como ${para}: ${malos.slice(0, 4).join(', ')}.`);
+    else okMsg(`--${token} (${Math.round(p * 100)}% de --text) cumple ${minimo}:1 como ${para} en las 7 series.`);
+  };
+  acentoOk('accent-text', 4.5, 'texto');
+  acentoOk('accent-line', 3, 'cromo');
+
   const cTextBg = ratio(text, bg);
   if (cTextBg != null && cTextBg < 4.5) warnMsg(`Contraste --text/--bg ${cTextBg.toFixed(2)}:1 < 4.5 (AA).`);
   else if (cTextBg != null) okMsg(`Contraste --text/--bg ${cTextBg.toFixed(2)}:1 (≥4.5 AA).`);
@@ -256,7 +307,13 @@ for (const s of sectionTags) {
 if (emptySecs > 0) warnMsg(`${emptySecs} sección(es) sin contenido sustancial.`);
 
 // C6. Movimiento: propósito, reduced-motion y estado final en print
-const hasAnim = /\bdata-(?:reveal|slide|grow|draw|pop|count|stagger|water)\b/i.test(markup) ||
+// Una sola fuente de verdad para los atributos data-* de motion.min.js: añadir
+// uno obliga a añadirlo también en la plantilla, en el motor y en los tests.
+const MOTION_ATTRS = 'reveal|slide|grow|draw|pop|count|stagger|water|hero|rule';
+// Los que dejan el elemento invisible o deformado en su estado inicial: solo
+// estos necesitan que reduced-motion y print los dejen en su estado final.
+const MOTION_STATES = 'reveal|slide|grow|draw|pop|water|hero|rule';
+const hasAnim = new RegExp(`\\bdata-(?:${MOTION_ATTRS})\\b`, 'i').test(markup) ||
   /@keyframes\b|scroll-behavior\s*:\s*smooth|(?:^|[;{])\s*(?:animation(?:-name)?|transition(?:-property)?)\s*:/i.test(css);
 if (hasAnim) {
   // Ambos bloques se cortan por el SIGUIENTE `@media`: si no, las reglas de
@@ -269,12 +326,12 @@ if (hasAnim) {
     if (!/animation\s*:\s*none|animation-duration\s*:\s*0/i.test(reducedCss)) falta('prefers-reduced-motion no desactiva las animaciones CSS.');
     if (!/transition\s*:\s*none|transition-duration\s*:\s*0/i.test(reducedCss)) falta('prefers-reduced-motion no desactiva las transiciones CSS.');
     if (!/scroll-behavior\s*:\s*auto/i.test(reducedCss)) falta('prefers-reduced-motion no fuerza scroll-behavior:auto.');
-    if (!/data-(?:reveal|slide|grow|draw|pop|water)/i.test(reducedCss)) falta('prefers-reduced-motion no fija el estado final de los elementos data-*.');
+    if (!new RegExp(`data-(?:${MOTION_STATES})`, 'i').test(reducedCss)) falta('prefers-reduced-motion no fija el estado final de los elementos data-*.');
     if (rmOk) okMsg('prefers-reduced-motion con estado final completo.');
   }
   const printCss = mediaBlock(css, /@media\s*print\b/i);
   if (!printCss) warnMsg('Hay animaciones pero no @media print para forzar estado final.');
-  else if (!/data-(?:reveal|slide|grow|draw|pop)[\s\S]*(?:opacity\s*:\s*1|transform\s*:\s*none|stroke-dashoffset\s*:\s*0)/i.test(printCss)) {
+  else if (!new RegExp(`data-(?:${MOTION_STATES})[\\s\\S]*(?:opacity\\s*:\\s*1|transform\\s*:\\s*none|stroke-dashoffset\\s*:\\s*0)`, 'i').test(printCss)) {
     warnMsg('El bloque print no fuerza el estado final de las animaciones data-*.');
   } else okMsg('Print fuerza el estado final de las animaciones.');
   if (/transition\s*:\s*all\b/i.test(css)) warnMsg('Se usa transition:all; declara las propiedades explícitamente.');
@@ -283,7 +340,7 @@ if (hasAnim) {
   // no debe existir sin JavaScript. Cada selector que lo aplique a un elemento
   // `data-*` de motion tiene que ir detrás de una clase que solo pone el JS
   // (`html.js`, `body.js`, …). Se acepta además la variante `:not(.no-anim)`.
-  const motionAttr = 'data-(?:reveal|slide|grow|draw|pop|count|stagger|water)';
+  const motionAttr = `data-(?:${MOTION_ATTRS})`;
   // `.js` cuenta como clase aunque venga pegada a un selector de tipo (`html.js`);
   // lo que no vale es que sea parte de otro nombre (`.no-js`, `.js-active`).
   const gateJs = (selector) => [...selector.matchAll(/\.js\b/g)]
@@ -300,7 +357,7 @@ if (hasAnim) {
     okMsg('El estado inicial oculto de los elementos data-* está gated por html.js.');
   }
 
-  // scale(0) es una singularidad:rompe la reversibilidad y el CLS. Se ignoran los
+  // scale(0) es una singularidad: rompe la reversibilidad y el CLS. Se ignoran los
   // subrayados/decorados de :hover, :focus, ::after y ::before, que no son entradas.
   const escalaSingular = [...css.matchAll(/([^{}]+)\{([^{}]*scale(?:X|Y)?\(\s*0(?:\.0+)?\s*\)[^{}]*)\}/gi)]
     .filter((m) => !/:hover|:focus|:active|::after|::before/.test(m[1]))
@@ -456,6 +513,90 @@ if (/data-theme\s*=\s*["']dark["']/i.test(markup) && !/\[data-theme=["']?dark["'
   warnMsg('El modo oscuro necesita color-scheme:dark en su bloque CSS.');
 }
 if (metaColorScheme !== null && metaTheme) okMsg('color-scheme y theme-color declarados.');
+
+// C14. Colores literales: la paleta se declara en :root, no se reparte por la hoja
+//
+// Lo que este check atrapa es concreto, no teórico:
+//   · un `<style>` local con el hex de otra paleta, que al cambiar de paleta
+//     deja de ser el color de marca sin que nadie se entere;
+//   · un #f1f5f9 repetido cinco veces en reglas distintas, que es un token
+//     disfrazado de decisión local;
+//   · un `fill="#6b7280"` que fija en el SVG el gris de un token y rompe el
+//     "mismo color = misma serie" en cuanto se cambia la paleta.
+// La salida es `var(--token)` o `color-mix()`, y ambos se recolorean solos.
+//
+// Zona exenta: las DECLARACIONES de token, que es exactamente lo que se escribe
+// como `--nombre: valor`. Cubre `:root`, los overrides por atributo como
+// `[data-theme="dark"]` y cualquier bloque de paleta que se añada después, sin
+// tener que enumerarlos aquí. Y los neutros puros (`#fff`, `#000`), que son la
+// única forma de poner texto o icono blanco sobre un hero o un acento: ahí el
+// blanco es el token, no una decisión local.
+// Nota: el color de `<meta name="theme-color">` no se mira a propósito — lo
+// rellena la paleta y en un informe ya es el fondo real, no una decisión de estilo.
+
+// Un comentario no se pinta, así que se quita antes de buscar hex. Si no, este
+// mismo archivo tendría que poder escribir `--chart-3` en un ejemplo sin
+// saltarse su propio check.
+const cssSinComentarios = css.replace(/\/\*[\s\S]*?\*\//g, '');
+// Una declaración de custom property va de `--x:valor` hasta el `;` o el `}`.
+// Se ancla al separador previo para no comerse nada de `var(--x,0)`, que al no
+// llevar `:` no es una declaración sino un uso.
+const cssSinTokens = cssSinComentarios.replace(/(^|[;{])\s*--[\w-]+\s*:[^;}]*/g, '$1');
+// Un selector puede ser un id que solo parece un color (`#face{}`): si lo que
+// sigue al literal es una llave de apertura, es un selector, no un color.
+const NEUTRAL = /^#(?:fff|ffffff|000|000000)$/i;
+const hexCssUnicos = [...new Set(
+  [...cssSinTokens.matchAll(/#[0-9a-fA-F]{3,8}\b/g)]
+    .filter((x) => !/^\s*\{/.test(cssSinTokens.slice(x.index + x[0].length)))
+    .map((x) => x[0])
+    .filter((h) => !NEUTRAL.test(h)),
+)];
+if (hexCssUnicos.length) {
+  failMsg(`C14: ${hexCssUnicos.length} color(es) literal(es) en el CSS fuera de un token (${hexCssUnicos.slice(0, 5).join(', ')}); usa var(--token) o color-mix().`);
+} else {
+  okMsg('C14: todo el color del CSS sale de tokens.');
+}
+
+// En atributos de presentación el literal no bloquea: un `fill="#fff"` sobre
+// un acento es legítimo y el SVG a veces necesita el color tal cual. Pero un gris
+// o un color de serie copiado a mano sí desincroniza la paleta, así que avisa.
+const sinTokensInline = (s) => s.replace(/(^|;)\s*--[\w-]+\s*:[^;]*/g, '$1');
+const hexAttrUnicos = [...new Set([
+  ...[...markup.matchAll(/(?:^|\s)(?:fill|stroke|color|stop-color|flood-color|lighting-color|bgcolor)\s*=\s*["'](#[0-9a-fA-F]{3,8})["']/gi)].map((x) => x[1]),
+  ...[...markup.matchAll(/\bstyle\s*=\s*["']([^"']*)["']/gi)]
+    .flatMap((s) => [...sinTokensInline(s[1]).matchAll(/#[0-9a-fA-F]{3,8}\b/g)].map((h) => h[0])),
+].filter((h) => !NEUTRAL.test(h)))];
+if (hexAttrUnicos.length) {
+  warnMsg(`C14: ${hexAttrUnicos.length} color(es) literal(es) en atributos de presentacion (${hexAttrUnicos.slice(0, 5).join(', ')}); usa var(--chart-N) o var(--muted).`);
+}
+
+// C15. Los tokens derivados del acento se recalculan en el elemento que remapea
+//
+// Una custom property sustituye sus var() en el elemento donde se DECLARA. Eso
+// significa que `--accent-text: color-mix(..., var(--accent))` escrita en `:root`
+// se resuelve UNA vez contra el `--primary` de `:root`, y ese color concreto
+// hereda a toda la pagina: `[data-accent="3"]` puede remapear `--accent` sin que
+// el derivado se entere. El acento por seccion se queda a medias, que es peor que
+// no tenerlo, porque el fondo del badge (que si se evalua en el elemento) cambia y
+// el texto no, y el resultado parece un descuido de estilo en vez de un error.
+//
+// La comprobacion es estructural: si algun selector `[data-accent...]` remapea
+// `--accent`, tiene que existir tambien un selector `[data-accent...]` que
+// declare los tres derivados. Es la forma que hace que el fallo se vea al leer el
+// CSS, y ademas la cubre un fixture en negativo.
+const reglasCss = [...cssSinComentarios.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({ sel: m[1], cues: m[2] }));
+const remapeaAcento = reglasCss.some((r) => /\[data-accent[\]=~^$*|"']/.test(r.sel) && /--accent\s*:/.test(r.cues));
+if (remapeaAcento) {
+  const derivados = reglasCss
+    .filter((r) => /\[data-accent[\]=~^$*|"']/.test(r.sel))
+    .flatMap((r) => [...r.cues.matchAll(/--(accent-line|accent-text|accent-ink)\s*:/g)].map((m) => m[1]));
+  const faltan = ['accent-line', 'accent-text', 'accent-ink'].filter((d) => !derivados.includes(d));
+  if (faltan.length) {
+    warnMsg(`C15: [data-accent] remapea --accent, pero ${faltan.map((f) => `--${f}`).join(', ')} no se recalcula en un selector [data-accent]: se resolverian en :root contra --primary y el acento por seccion no llegaria al texto ni al filete.`);
+  } else {
+    okMsg('C15: los tokens derivados del acento se recalculan donde se remapea.');
+  }
+}
 
 // ============ Resumen ============
 const blockers = hallazgos.length;

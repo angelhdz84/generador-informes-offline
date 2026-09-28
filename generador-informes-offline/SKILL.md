@@ -189,6 +189,20 @@ Estructura base OBLIGATORIA del documento:
 2. **Índice (TOC)** + **"Lo más importante"** si el informe supera 6 secciones (ver `references/infografias.md`)
 3. **Resumen ejecutivo**: 3-6 KPIs en tarjetas con sparkline
 4. **Secciones** según tipo y datos, cada una con su gráfica/infografía
+
+   Para que las secciones tengan identidad sin gritar, marca el contenedor con
+   `data-accent="N"` (1-7) y deja que el color lo ponga el token:
+
+   ```html
+   <section id="s3" data-accent="5"> … </section>
+   ```
+
+   El acento solo recolorea la **croma del encabezado** (filete, línea, borde
+   de bloque) y los badges; el texto y los fondos se quedan quietos, y los
+   colores de los datos **no se tocan** — si los remapeas, "mismo color =
+   misma serie" deja de ser cierto. Usa tonos neutros para el ramp: verde,
+   ámbar y rojo comunican un juicio que los datos no hacen. Ver
+   `references/diseno.md`.
 5. **Recomendaciones / conclusiones** (si aplica)
 6. **Notas metodológicas, fuentes y apéndice** (tabla de datos, definiciones)
 7. **Footer — SIEMPRE presente con identidad completa**:
@@ -241,6 +255,22 @@ Baseline de accesibilidad y lectura (OBLIGATORIO, ver
 2. El script comprueba 0-internet (errores que bloquean) y diseño (warnings).
    Con `--strict`, ambos bloquean: corrige TODOS los hallazgos y revalida hasta
    salir limpio (código 0). Sin `--strict` los warnings solo se informan.
+   Los tres que más sorprenden:
+
+   - **C14** bloquea cualquier color literal en el CSS. El color se declara en
+     `:root` (o en la paleta) y a partir de ahí se usa `var(--…)`. Las
+     declaraciones `--x: valor` están exentas a propósito: es donde vive la
+     paleta. En atributos de presentación y `style=""` es aviso, no bloqueo.
+   - **C15** avisa si remapeas `--accent` con `data-accent` sin recalcular los
+     tres derivados (`--accent-line`, `--accent-text`, `--accent-ink`) en el
+     mismo elemento. Una custom property se resuelve donde se **declara**: si
+     los derivados solo están en `:root`, se congelan contra el `--primary` de
+     la página y el acento por sección llega al fondo del badge pero no a su
+     texto. El CSS correcto está en `references/diseno.md`.
+   - **C1** mide el contraste de los tokens de acento, no solo de `--text` y
+     `--muted`. Si avisa de `--accent-text` o `--accent-line`, el problema no
+     es el hex: es la **cuota** del `color-mix` con `--text`, que se ha
+     bajado demasiado. Los mínimos medidos están en `references/diseno.md`.
 3. Antes de entregar, completa el **checklist manual** de
    `references/accesibilidad-ux.md` (recorrido con teclado, zoom 200 %, reduced
    motion, estado sin JS e impresión a PDF): el validador cubre la capa
@@ -250,7 +280,7 @@ Baseline de accesibilidad y lectura (OBLIGATORIO, ver
 ## Uso de assets
 
 - `assets/plantilla-base.html` — skeleton canónico (vía ÚNICA de diseño). Copiar y rellenar placeholders.
-- `assets/motion.min.js` — motor de animación (reveal, slide, grow, draw, pop, count, water). Su contenido va inline en `<script>` dentro del skeleton.
+- `assets/motion.min.js` — motor de animación (reveal, slide, grow, draw, pop, count, water, hero, rule). Además anima el estado de lectura: la barra `.read-progress` y el `aria-current` del índice. Su contenido va inline en `<script>` dentro del skeleton.
 - `assets/iconos.svg` — sprite de iconos SVG (estilo feather). Incrusta en el HTML los `<symbol>` que uses dentro de un `<svg>` oculto y referéncialos con `<svg class="icon"><use href="#i-nombre"></use></svg>`. Si falta un icono, dibújalo a mano con el mismo estilo de trazo (stroke 2, redondeado).
 - `assets/paletas.json` — paletas profesionales: objeto con esquema de colores (fondo, superficie, texto, primario, secundario, éxito, alerta, peligro, serie de gráfica). Elige según tipo de informe y preferencia del usuario.
 - `assets/alpine.min.js` — solo para modo interactivo; su contenido va inline en `<script>`.
@@ -258,12 +288,22 @@ Baseline de accesibilidad y lectura (OBLIGATORIO, ver
 ## Recomendaciones de calidad
 
 - Contraste AA/AAA en texto (ver `references/diseno.md`); el validador comprueba
-  `--text`/`--muted` sobre `--surface` y `--text` sobre `--bg`.
+  `--text`/`--muted` sobre `--surface`, `--text` sobre `--bg` y las tres cuotas
+  de acento contra la superficie tintada.
+- **El acento nunca va tal cual.** Los colores de serie no llegan ni al 4.5:1
+  del texto ni al 3:1 del cromo, así que usa siempre `--accent-line` (cromo),
+  `--accent-text` (texto) o `--accent-ink` (cifras grandes). Los tres salen de
+  `color-mix` con `--text` y sus cuotas están medidas: no las bajes por
+  "porque se ven mejor", es literalmente peor.
 - Cada gráfica con nombre accesible, leyenda cuando hace falta y valores legibles;
   tablas con `<caption>` y `<th scope>`; toda gráfica con su "Lectura:".
 - Números con formato local (miles, %, fechas es-ES) y `font-variant-numeric:tabular-nums`
   en cifras comparables para que las columnas alineen.
 - No satures: una idea por gráfica; máximo 6 colores de serie en una misma gráfica.
+- La portada puede llevar su propio momento: `data-hero` en los elementos sueltos
+  (marca, `h1`, subtítulo, meta) con el retardo a mano en `style="--d:…ms"`, y
+  `data-rule` en un `<i class="rule" data-rule></i>` para que el filete se dibuje.
+  Ninguno de los dos es un reveal por scroll: si no los necesitas, no los pongas.
 - Animaciones: una vez por elemento, solo `transform`/`opacity`/`stroke-dashoffset`,
   easing `cubic-bezier(0.23, 1, 0.32, 1)`, UI por debajo de 300 ms, sin `transition:all`
   ni `scale(0)`; respetar `prefers-reduced-motion`; estado final completo sin JS y en
