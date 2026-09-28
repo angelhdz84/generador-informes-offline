@@ -170,6 +170,42 @@ vigila: si algún selector `[data-accent…]` remapea `--accent`, tiene que exis
 otro `[data-accent…]` que declare los tres derivados; si no, avisa nombrando los
 que faltan.
 
+## Pantalla estrecha: tres caídas que solo se ven a 390 px
+
+El validador no llega aquí: son decisiones de maquetación que aparecen cuando
+el SVG escala por debajo de 1:1 o la columna queda estrecha. Revisa los tres en
+toda pieza nueva (referencia funcional en `SPEC.md` §4-bis):
+
+- **Texto de los ejes**. Un `viewBox` de 600 de ancho a 390 px escala a ~0,6,
+  así que un `font-size="11"` de eje cae a ~6,6 px y deja de leerse. Dale una
+  clase propia a las gráficas con ejes (p. ej. `ejes`) y agranda el texto con
+  media query **solo a esas**:
+
+  ```css
+  @media (max-width:760px){ .chart svg.ejes text{font-size:19px} }
+  ```
+
+  El donut no lo necesita: va en columna partida (0,74 en escritorio, 0,58 a
+  tamaño completo) y lleva sus propios `font-size`; la media query lo estropearía.
+
+- **Cifras partidas**. `body{overflow-wrap:anywhere}` es obligatorio y es
+  exactamente lo que parte `2925` en `292 / 5` dentro de una celda estrecha.
+  `white-space:nowrap` en los `td` gana al `overflow-wrap`: la tabla desborda y
+  la desplaza `.table-wrap{overflow-x:auto}` — WCAG 1.4.10 lo permite para
+  tablas de datos. Devuelve `white-space:normal` al texto corrido (nombres
+  largos, columna de mitigación), o la tabla se dispara de ancho.
+
+- **Badges**. Una etiqueta de una o dos palabras no debe cortarse a mitad de
+  palabra en una columna estrecha (`Prioritari-o`): `.badge{white-space:nowrap}`,
+  fuera de la media query.
+
+Y una regla de formato que se cuela en los literales escritos a mano:
+`Intl`/`toLocaleString` con `es-ES` **no agrupa cifras de cuatro dígitos**
+(`1201` → `"1201"`, `12560` → `"12.560"`). Un `aria-label`, una "Lectura:" o
+una etiqueta de KPI escrita a mano tiene que coincidir con lo que genera `nf()`
+en las tablas; se caza con `\b\d{1,3}\.\d{3}\b` sobre el HTML final y revisando
+cada coincidencia (hay que descartar `viewBox`, `stroke-dasharray` y coordenadas).
+
 ## Estructura del repo
 
 ```
@@ -213,4 +249,8 @@ Antes de citar una fuente nueva, verifíquela (árbol del repo, `LICENSE`,
 - Mensajes en español, estilo conciso que describa el cambio.
 - `generador-informes-offline-workspace/` está en `.gitignore` (resultados de
   benchmark, no forman parte de la skill).
+- `.openchamber/` está en `.gitignore` (capturas de la verificación visual).
+- `informe-*.html` está en `.gitignore` **como dato de cliente**: los informes
+  generados no se suben. Un ejemplo ficticio que sí quieras versionar necesita
+  una excepción explícita en `.gitignore`, no un salto de la regla.
 - No commitear secretos ni datos de clientes fuera del repo.

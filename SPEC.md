@@ -74,7 +74,18 @@ Norma completa en `references/accesibilidad-ux.md`. Requisitos funcionales:
   `text-wrap:pretty` en prosa.
 - **Anclas**: `scroll-padding-top`/`scroll-margin-top` cuando hay topbar sticky.
 - **Reflow**: sin `overflow-x:hidden` como parche; legible a 320/390 px y a
-  zoom 200 %.
+  zoom 200 %. Tres caídas que solo se ven a pantalla estrecha o en columna
+  partida y que hay que revisar en toda pieza nueva (ver `AGENTS.md`):
+  - El texto de un SVG con `viewBox` de 600 escala a ~0,6 a 390 px, así que un
+    `font-size` de eje de 11 px cae a ~6,6 px. Agrandarlo en una media query y
+    **solo a las gráficas con ejes** (clase propia, p. ej. `ejes`); el donut
+    va en columna partida y lleva sus propios tamaños.
+  - `overflow-wrap:anywhere` (obligatorio) parte las cifras de cuatro dígitos
+    en las celdas (`2925` → `292 / 5`). `white-space:nowrap` en los `td` gana
+    al `overflow-wrap`: la tabla desborda y la desplaza
+    `.table-wrap{overflow-x:auto}`, permitido por WCAG 1.4.10 para datos.
+    El texto corrido (columna de mitigación, nombres largos) vuelve a `normal`.
+  - Los badges cortan palabras en columnas estrechas: `white-space:nowrap`.
 - **Movimiento**: estado final completo sin JS, con `prefers-reduced-motion` y en
   print.
 - **Contenido**: "Lectura:" interpreta el hallazgo pero no sustituye el dato
@@ -184,13 +195,28 @@ node generador-informes-offline/scripts/validar-offline.mjs <informe.html> [--st
   mejoras de UI (bloques con código de color, tarjetas `.q` con hover, números
   en círculo `.rnum`, meta de portada en pills), generación de informes de
   ejemplo (Informe Técnico de Consulta del CTA).
-- **Iteración 4 (actual)**: baseline de accesibilidad y lectura
+- **Iteración 4**: baseline de accesibilidad y lectura
   (`references/accesibilidad-ux.md`) con skip link, `main#contenido`, nombres
   accesibles de SVG, dimensiones de imagen, `color-scheme`/`theme-color`,
   `text-wrap`, `scroll-margin-top` y reduced motion universal; motion craft
   (opt-in por `data-*`, easing único, UI < 300 ms, sin `scale(0)`); validador
   ampliado con checks C7–C13, flag `--json` y 58 fixtures unitarios; tres
   informes de ejemplo remediados y en verde con `--strict`.
+- **Iteración 5**: acento por sección con `data-accent` y sus tres tokens
+  derivados (`--accent-line`, `--accent-text`, `--accent-ink`) recalculados en
+  el propio elemento; plantilla con bloques temáticos de código de color, índice
+  con estado visible, barra de progreso y movimiento focal `data-hero`;
+  validador con C1 (cuotas de acento contra la superficie tintada), C14 (todo
+  el color del CSS sale de tokens) y C15 (los derivados se recalculan donde se
+  remapea); tests de 61 a 86 y banco de mutaciones en negativo a 42/42.
+- **Iteración 6 (actual)**: informe de ejemplo que ejercita la iteración 5 de
+  punta a punta (Informe Ejecutivo Anual 2025, datos e identidad ficticios) y
+  su revisión a 1440 y 390 px, que destapó las tres caídas de legibilidad ya
+  incorporadas a §4-bis: texto de SVG por debajo de 7 px, cifras partidas por
+  `overflow-wrap:anywhere` y badges cortados en columna estrecha. La revisión
+  confirmó además C15 en runtime (el derivado cambia de valor por sección) y
+  el formato de `Intl` es-ES, que no agrupa cifras de cuatro dígitos. El
+  informe no se versiona: `informe-*.html` es dato de cliente en `.gitignore`.
 - **Licencias de terceros**: los criterios adaptados y los recursos embebidos
   están inventariados en `THIRD_PARTY_NOTICES.md` en la raíz del repo. No todas
   las licencias son MIT: Impeccable es Apache-2.0.
